@@ -1,0 +1,32 @@
+
+# FVM Version Cache
+.fvm/
+
+# Flutter/Dart build and cache
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub/
+.pub-cache/
+
+# IDE settings
+.idea/
+.vscode/
+.DS_Store
+
+# Lock file for packages (plugins usually ignore at root)
+pubspec.lock
+
+# iOS proprietary frameworks (DO NOT COMMIT)
+ios/Frameworks/PortSIPVoIPSDK.framework/
+ios/Frameworks/QuanYu.xcframework/
+
+# Example app generated files
+example/.dart_tool/
+example/build/
+example/ios/Pods/
+example/ios/.symlinks/
+example/ios/Runner.xcworkspace/
+example/ios/DerivedData/
+example/ios/Flutter/ephemeral/

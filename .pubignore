@@ -1,0 +1,18 @@
+# Exclude local iOS binary frameworks from the published package
+ios/Frameworks/
+example/ios/Frameworks/
+
+# iOS build artifacts in the example app
+example/ios/Pods/
+example/ios/.symlinks/
+example/build/
+
+# Xcode user data and workspaces
+**/*.xcworkspace
+**/*.xcuserdatad
+**/*.xcuserdata
+**/*.xcscmblueprint
+
+# Derived data and macOS metadata
+**/DerivedData/
+**/.DS_Store
