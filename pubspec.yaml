@@ -1,8 +1,8 @@
 name: quanyu_sdk
 description: A Flutter SDK for integrating with native iOS.
 version: 0.0.1
-homepage: https://example.com/quanyu
-repository: https://example.com/quanyu/repo
+homepage: https://github.com/XYRZX/quanyu_flutter#readme
+repository: https://github.com/XYRZX/quanyu_flutter
 
 environment:
   sdk: '>=2.17.0 <4.0.0'

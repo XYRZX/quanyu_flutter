@@ -48,11 +48,11 @@ NS_ASSUME_NONNULL_BEGIN
  * 全宇SDK Flutter插件主类
  * 负责处理Flutter与原生iOS代码之间的通信
  */
-@interface QuanyuSdkPlugin : NSObject <QuanYuSocketDelegate>
-
-// 如果Flutter协议可用，则遵循这些协议
 #if __has_include(<Flutter/Flutter.h>) || __has_include("Flutter/Flutter.h")
+@interface QuanyuSdkPlugin : NSObject <FlutterPlugin, FlutterStreamHandler, QuanYuSocketDelegate>
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar;
+#else
+@interface QuanyuSdkPlugin : NSObject <QuanYuSocketDelegate>
 #endif
 
 @end
