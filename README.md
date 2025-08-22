@@ -29,7 +29,7 @@ iOS 集成要求
 1. 在 Flutter 项目中添加依赖
    ```yaml
    dependencies:
-     quanyu_sdk: ^0.0.1
+     quanyu_sdk: ^0.0.2
    ```
 2. 获取 PortSIPVoIPSDK.framework 并放置到插件目录 `ios/Frameworks/` 下（详见上文）。
 3. 安装 iOS 依赖
