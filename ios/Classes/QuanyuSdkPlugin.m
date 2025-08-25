@@ -95,6 +95,8 @@
         [self handleSetKeepAlive:call result:result];
     } else if ([@"setSpeakerOn" isEqualToString:call.method]) { // 是否免提
         [self handleSetSpeakerOn:call result:result];
+    } else if ([@"getSpeakerEnabled" isEqualToString:call.method]) { // 获取是否免提
+        [self handleGetSpeakerEnabled:call result:result];
     } else if ([@"sendRequestWithMessage" isEqualToString:call.method]) { // 发送命令
         [self handleSendRequestWithMessage:call result:result];
     } else if ([@"setHeartbeatInterval" isEqualToString:call.method]) { // 设置心跳间隔
@@ -963,6 +965,21 @@
         [_infoDic setObject:@"静音" forKey:@"30"];
     }
     return _infoDic;
+}
+
+/**
+ * 获取当前扬声器（免提）状态
+ * 返回：true 表示开启，false 表示关闭
+ */
+- (void)handleGetSpeakerEnabled:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        BOOL enabled = [[PortSIPManager shared] isSpeakerEnabled];
+        result(@(enabled));
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"GET_SPEAKER_STATE_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"获取扬声器状态时发生异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 @end

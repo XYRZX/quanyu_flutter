@@ -109,6 +109,14 @@ class QuanyuSdk {
     return QuanyuSdkPlatform.instance.setSpeakerOn(enabled: enabled);
   }
 
+  /// 获取当前是否开启扬声器（免提）
+  ///
+  /// 返回值：
+  /// - [bool]: true 表示扬声器已开启（免提），false 表示关闭（听筒）
+  Future<bool> getSpeakerEnabled() {
+    return QuanyuSdkPlatform.instance.getSpeakerEnabled();
+  }
+
   /// 发送自定义消息
   ///
   /// 通过WebSocket向服务器发送自定义消息。

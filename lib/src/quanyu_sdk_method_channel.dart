@@ -87,6 +87,17 @@ class MethodChannelQuanyuSdk extends QuanyuSdkPlatform {
     await methodChannel.invokeMethod('setSpeakerOn', {'enabled': enabled});
   }
 
+  /// 获取当前是否开启扬声器（免提）【】
+  ///
+  /// 通过MethodChannel调用原生方法'getSpeakerEnabled'，
+  /// 返回当前扬声器状态。
+  /// 返回值：bool
+  @override
+  Future<bool> getSpeakerEnabled() async {
+    final result = await methodChannel.invokeMethod('getSpeakerEnabled');
+    return result as bool;
+  }
+
   /// 发送自定义消息实现【】
   ///
   /// 通过方法通道调用原生平台的消息发送方法。

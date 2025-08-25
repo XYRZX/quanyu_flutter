@@ -8,6 +8,7 @@
 
 #import "SoundService.h"
 #import <AVFoundation/AVFoundation.h>
+#import <TargetConditionals.h>
 
 #define RELEASE_PLAYER(player)                                                                                         \
     if (player) {                                                                                                      \
@@ -41,28 +42,26 @@
 }
 
 - (BOOL)setSpeakerEnabled:(BOOL)enabled {
+#if TARGET_OS_IOS
     AVAudioSession *session = [AVAudioSession sharedInstance];
     NSError *error = nil;
 
-    // 获取当前类别选项，但明确设置我们需要的所有选项
     AVAudioSessionCategoryOptions options = AVAudioSessionCategoryOptionAllowBluetooth |
                                             AVAudioSessionCategoryOptionAllowAirPlay |
                                             AVAudioSessionCategoryOptionDefaultToSpeaker;
 
-    // 根据需求调整选项
     if (!enabled) {
         options &= ~AVAudioSessionCategoryOptionDefaultToSpeaker;
     }
 
-    // 首先设置类别和选项
     [session setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:options error:&error];
 
     if (error) {
         NSLog(@"设置音频会话类别失败: %@", error.localizedDescription);
+        _speakerOn = enabled; // 同步内部状态
         return NO;
     }
 
-    // 然后尝试覆盖音频输出端口（更强制性的方法）
     if (enabled) {
         [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:&error];
     } else {
@@ -71,28 +70,42 @@
 
     if (error) {
         NSLog(@"覆盖音频输出端口失败: %@", error.localizedDescription);
-        // 即使覆盖失败，仍然返回YES，因为类别设置可能已成功
-        // 实际项目中可根据需求调整此逻辑
     }
 
-    // 激活音频会话
     [session setActive:YES error:&error];
 
     if (error) {
         NSLog(@"激活音频会话失败: %@", error.localizedDescription);
+        _speakerOn = enabled; // 同步内部状态
         return NO;
     }
 
-    // 添加日志输出当前音频路由
     AVAudioSessionRouteDescription *route = session.currentRoute;
     NSLog(@"当前音频输出: %@", route.outputs);
 
+    _speakerOn = enabled; // 同步内部状态
     return YES;
+#else
+    // 非 iOS 平台（例如 macOS 编译器索引），不使用 AVAudioSession，直接维护内部状态
+    _speakerOn = enabled;
+    return YES;
+#endif
 }
 
 - (BOOL)isSpeakerEnabled {
-
+#if TARGET_OS_IOS
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    AVAudioSessionRouteDescription *route = session.currentRoute;
+    for (AVAudioSessionPortDescription *output in route.outputs) {
+        if ([output.portType isEqualToString:AVAudioSessionPortBuiltInSpeaker]) {
+            return YES;
+        }
+    }
+    return NO;
+#else
+    // 非 iOS 平台下回退到内部标记，避免编译期/静态分析错误
     return _speakerOn;
+#endif
 }
 
 - (BOOL)playRingTone {
@@ -141,6 +154,10 @@
         [_playerRingBackTone stop];
     }
     return YES;
+}
+
+- (BOOL)speakerEnabled:(BOOL)enabled {
+    return [self setSpeakerEnabled:enabled];
 }
 
 - (void)dealloc {
