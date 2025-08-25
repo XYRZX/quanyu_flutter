@@ -27,7 +27,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  quanyu_sdk: 179e56c087d9c013bcfb5e33f1f063099c3fa927
+  quanyu_sdk: ab90fad5cc091c1416d32a78b519da239560163a
   Reachability: fd0ecd23705e2599e4cceeb943222ae02296cbc6
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
 
