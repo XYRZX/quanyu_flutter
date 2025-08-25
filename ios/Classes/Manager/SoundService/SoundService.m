@@ -96,12 +96,34 @@
 #if TARGET_OS_IOS
     AVAudioSession *session = [AVAudioSession sharedInstance];
     AVAudioSessionRouteDescription *route = session.currentRoute;
+
+    // 如果当前还没有有效的路由（例如会话尚未激活或刚切换尚未回调），使用内部标记兜底
+    if (route.outputs.count == 0) {
+        return _speakerOn;
+    }
+
     for (AVAudioSessionPortDescription *output in route.outputs) {
-        if ([output.portType isEqualToString:AVAudioSessionPortBuiltInSpeaker]) {
+        NSString *port = output.portType;
+        // 明确命中外放扬声器
+        if ([port isEqualToString:AVAudioSessionPortBuiltInSpeaker]) {
             return YES;
         }
+        // 命中以下任一外设时，确定不是外放
+        if ([port isEqualToString:AVAudioSessionPortHeadphones] ||
+            [port isEqualToString:AVAudioSessionPortHeadsetMic] ||
+            [port isEqualToString:AVAudioSessionPortBluetoothA2DP] ||
+            [port isEqualToString:AVAudioSessionPortBluetoothLE] ||
+            [port isEqualToString:AVAudioSessionPortBluetoothHFP] ||
+            [port isEqualToString:AVAudioSessionPortAirPlay] ||
+            [port isEqualToString:AVAudioSessionPortHDMI] ||
+            [port isEqualToString:AVAudioSessionPortLineOut] ||
+            [port isEqualToString:AVAudioSessionPortCarAudio]) {
+            return NO;
+        }
     }
-    return NO;
+
+    // 其他情况（例如刚 override 到 speaker 但路由尚未刷新），返回内部状态兜底
+    return _speakerOn;
 #else
     // 非 iOS 平台下回退到内部标记，避免编译期/静态分析错误
     return _speakerOn;
