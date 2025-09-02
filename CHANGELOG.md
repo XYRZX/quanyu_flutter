@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
 ## [0.0.1] - 2025-01-XX
 
@@ -50,3 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 发布版本 0.0.2：更新包元数据（homepage/repository），完善 README 说明。 
 - iOS podspec 强化 PortSIPVoIPSDK.framework 的本地放置策略（移除远程回退）。 
 - 改进文档与发布流程说明，确保可以直接从 pub.dev 集成。
+
+## [0.0.3] - 2025-09-02
+
+### Changed
+- 同步 iOS Podspec 和 Dart 包版本为 0.0.3，保持一致性。
+- 发布前检查通过（flutter pub publish --dry-run 0 warnings）。
+- 进一步明确 iOS 端依赖获取方式与本地放置校验（PortSIP 框架）。
