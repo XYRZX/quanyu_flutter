@@ -14,7 +14,7 @@ QuanYu Flutter 插件（仅支持 iOS）。
       - Classes/
       - Frameworks/
         - PortSIPVoIPSDK.framework/
-        - QuanYu.xcframework/ (可选，本插件默认通过 CocoaPods 引入 QuanYu 1.0.6；若你手动放置本地 xcframework，也会自动使用本地)
+        - QuanYu.xcframework/ (可选，本插件默认通过 CocoaPods 引入 QuanYu 1.0.7；若你手动放置本地 xcframework，也会自动使用本地)
       - quanyu_sdk.podspec
 
 为何必须放置本地框架
@@ -40,7 +40,7 @@ iOS 集成要求
    如缺少 PortSIPVoIPSDK.framework，会在此步报错并提示放置路径。
 
 QuanYu 依赖
-- 默认通过 CocoaPods 引入 QuanYu 1.0.6。
+- 默认通过 CocoaPods 引入 QuanYu 1.0.7。
 - 如果你在 `ios/Frameworks/` 下放置了 `QuanYu.xcframework`，插件会自动优先使用本地框架。
 
 权限与注意事项
