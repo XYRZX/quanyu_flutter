@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'quanyu_sdk'
-  s.version          = '0.0.4'
+  s.version          = '0.0.5'
   s.summary          = 'A Flutter SDK for integrating with native iOS.'
   s.description      = <<-DESC
 A Flutter SDK for integrating with native iOS SDKs.

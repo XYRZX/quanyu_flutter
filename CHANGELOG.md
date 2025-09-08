@@ -57,3 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 同步 iOS Podspec 和 Dart 包版本为 0.0.4，保持一致性。
 - 发布前检查通过（flutter pub publish --dry-run 0 warnings）。
 - 进一步明确 iOS 端依赖获取方式与本地放置校验（PortSIP 框架）。
+
+## [0.0.5] - 2025-09-08
+
+### Fixed
+- 修复 pub.dev 发布失败：同步 Dart 与 iOS Podspec 版本为 0.0.5；确保 .pubignore 排除本地二进制框架与 example 构建产物。
+
+### Chore
+- 发布流程：执行 `dart pub publish --dry-run` 验证通过后再发布。
