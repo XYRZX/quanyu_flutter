@@ -65,3 +65,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chore
 - 发布流程：执行 `dart pub publish --dry-run` 验证通过后再发布。
+
+
+## [0.0.8] - 2025-09-09
+
+### Changed
+- 配置 GitHub Actions 自动化发布（OIDC，无需私密 Token）。
+- 新增 scripts/release.sh 一键发版脚本，简化发布流程。
+
+### Notes
+- 无 API 行为变更；仅发布流程与脚本相关的调整。
