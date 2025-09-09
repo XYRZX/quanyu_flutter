@@ -216,6 +216,10 @@
                                 [[NSNotificationCenter defaultCenter] removeObserver:self];
                                 // 登录失败,返回失败信息
                                 result(@{@"success" : @NO, @"message" : errorMessage});
+                                
+                                [[QuanYuSocket shared]
+                                    saveLog:@"Service-portSip-ECoreErrorNone"
+                                    message:[NSString stringWithFormat:@"Service-portSip-ECoreErrorNone"]];
                             }
                           }];
 
@@ -792,7 +796,7 @@
     NSLog(@"连接断开[onDisconnected]: 状态码 %d, 原因: %@", code, reason);
 
     [[QuanYuSocket shared]
-        saveLog:@"disConnect"
+        saveLog:@"OnDisconnect"
         message:[NSString stringWithFormat:@"连接断开[onDisconnected]: 状态码 %d, 原因: %@", code, reason]];
 
     [self sendEventToFlutter:@{ @"event" : @"onDisconnected", @"data" : @{ @"code" : @(code), @"reason" : reason ?: @"" } }];
@@ -810,6 +814,11 @@
     NSString *safeReason = reason ?: @"未知错误";
 
     NSLog(@"WebSocket连接失败回调[onConnectFailed]: 状态码 %d, 原因: %@", code, safeReason);
+    
+    [[QuanYuSocket shared]
+        saveLog:@"disconnect"
+        message:[NSString stringWithFormat:@"断开[onConnectFailedWithCode]: 状态码 %d, 原因: %@", code, reason]];
+    
     [self sendEventToFlutter:@{ @"event" : @"onConnectFailed", @"data" : @{ @"code" : @(code), @"reason" : safeReason } }];
 }
 
@@ -870,7 +879,7 @@
 
           weakSelf.isRegisterSoftPhone = NO;
 
-          [[QuanYuSocket shared] saveLog:@"unRegisterServer"
+          [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer"
                                  message:[NSString stringWithFormat:@"软电话注册失败 sipRegistrationStatus = %@",
                                                                     @([PortSIPManager shared].sipRegistrationStatus)]];
         });

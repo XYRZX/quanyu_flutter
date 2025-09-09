@@ -181,6 +181,8 @@
                 outboundServer:@""
             outboundServerPort:randomOutboundPort];
     
+    [[QuanYuSocket shared] saveLog:@"PortSipSdk-result" message:[NSString stringWithFormat:@"软电话返回：%d",ret]];
+    
     if (ret != 0) {
         NSLog(@"setUser failure ErrorCode = %d", ret);
         
@@ -234,7 +236,7 @@
     // 注册刷新间隔为90秒
     ret = [_portSIPSDK registerServer:90 retryTimes:0];
     if (ret != 0) {
-        [[QuanYuSocket shared] saveLog:@"unRegisterServer" message:[NSString stringWithFormat:@"注销软电话 ErrorCode = %d", ret]];
+        [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:[NSString stringWithFormat:@"注销软电话 ErrorCode = %d", ret]];
         [_portSIPSDK unInitialize];
         NSLog(@"registerServer failure ErrorCode = %d", ret);
         
@@ -269,7 +271,7 @@
 - (void)offLine {
     
     if (_sipInitialized) {
-        [[QuanYuSocket shared] saveLog:@"unRegisterServer" message:@"注销软电话"];
+        [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:@"注销软电话"];
         
         [NSThread sleepForTimeInterval:1.0];
         
@@ -320,7 +322,7 @@
             [self.delegate pushAppLogToWeb:@"Refresh" info:@"retry a new register"];
         }
         
-        [[QuanYuSocket shared] saveLog:@"unRegisterServer" message:@"注销软电话"];
+        [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:@"注销软电话"];
         [_portSIPSDK unInitialize];
         
         _sipInitialized = NO;
@@ -335,7 +337,7 @@
             [self.delegate pushAppLogToWeb:@"unRegister" info:@"unRegister when background"];
         }
         
-        [[QuanYuSocket shared] saveLog:@"unRegisterServer" message:@"注销软电话"];
+        [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:@"注销软电话"];
         [_portSIPSDK unInitialize];
         
         _sipRegistrationStatus = 3;
