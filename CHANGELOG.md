@@ -75,3 +75,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 - 无 API 行为变更；仅发布流程与脚本相关的调整。
+
+## [0.0.9] - 2025-09-10
+
+### Changed
+- 对发布流程进行调整，确保脚本与 GitHub Actions 兼容并稳定触发。
+- 同步 Dart 包与 iOS Podspec 版本为 0.0.9。
+
+### Notes
+- 无功能性改动，仅发布相关元数据与流程优化。
