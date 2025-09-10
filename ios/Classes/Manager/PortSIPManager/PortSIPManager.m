@@ -166,6 +166,9 @@
         return;
     }
     
+    // 开启SIP信令回调（默认关闭）
+    [_portSIPSDK enableCallbackSignaling:YES enableReceived:YES];
+    
     // 固定端口
     int randomOutboundPort = 5060;
     
@@ -482,8 +485,6 @@
     
     NSString *jsonStr = [NSString convertToJsonData:dic];
     NSString *jsString = [NSString stringWithFormat:@"onInviteIncoming('%@')", jsonStr];
-    
-    [[QuanYuSocket shared] saveLog:@"onReceivedSignaling" message:jsString];
     
     if ([self.delegate respondsToSelector:@selector(CallJSWithJSonStr:)]) {
         [self.delegate CallJSWithJSonStr:jsString];
