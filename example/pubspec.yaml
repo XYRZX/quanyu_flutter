@@ -3,7 +3,7 @@ description: Demonstrates how to use the quanyu_sdk plugin.
 publish_to: 'none'
 
 # 新增版本号和构建号
-version: 1.0.0+1
+version: 1.0.1+1
 
 environment:
   sdk: '>=2.17.0 <4.0.0'
