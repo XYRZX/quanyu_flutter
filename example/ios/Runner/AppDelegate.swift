@@ -29,12 +29,12 @@ import quanyu_sdk
         UserDefaults.standard.register(defaults: defaultValues)
 
         // 添加终止监听
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleTermination),
-            name: UIApplication.willTerminateNotification,
-            object: nil
-        )
+//        NotificationCenter.default.addObserver(
+//            self,
+//            selector: #selector(handleTermination),
+//            name: UIApplication.willTerminateNotification,
+//            object: nil
+//        )
 
         let settings = UserDefaults.standard
         enableForceBackground = settings.bool(forKey: "ForceBackground")
@@ -69,7 +69,7 @@ import quanyu_sdk
         if enableForceBackground {
             PortSIPManager.shared().startKeepAwake()
         } else {
-            PortSIPManager.shared().unRegister()
+//            PortSIPManager.shared().unRegister()
             beginBackgroundTaskForRegister()
         }
     }
@@ -80,16 +80,16 @@ import quanyu_sdk
         if enableForceBackground {
             PortSIPManager.shared().stopKeepAwake()
 
-            var dic: [String: String] = [:]
-            dic["netSatus"] = "有网"
-
-            NotificationCenter.default.post(
-                name: Notification.Name("internetChange"),
-                object: nil,
-                userInfo: dic
-            )
+//            var dic: [String: String] = [:]
+//            dic["netSatus"] = "有网"
+//
+//            NotificationCenter.default.post(
+//                name: Notification.Name("internetChange"),
+//                object: nil,
+//                userInfo: dic
+//            )
         } else {
-            PortSIPManager.shared().refreshRegister()
+//            PortSIPManager.shared().refreshRegister()
         }
     }
 
@@ -136,9 +136,9 @@ import quanyu_sdk
     }
 
     // 处理终止事件
-    @objc func handleTermination() {
-        print("应用即将终止！")
-    }
+//    @objc func handleTermination() {
+//        print("应用即将终止！")
+//    }
 }
 
 // MARK: - Extensions for Reachability

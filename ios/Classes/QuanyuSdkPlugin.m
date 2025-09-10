@@ -130,7 +130,7 @@
         NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
 
         // 注销之前旧的
-        [[PortSIPManager shared] unRegister];
+//        [[PortSIPManager shared] unRegister];
 
         // 设置PortSIPManager的代理和用户信息
         [PortSIPManager shared].userInfo = userDict;
@@ -155,7 +155,7 @@
         // 下线
         [[PortSIPManager shared] offLine];
 
-        [[PortSIPManager shared] unRegister];
+//        [[PortSIPManager shared] unRegister];
     }
 }
 
