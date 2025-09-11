@@ -93,3 +93,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 - 无破坏性变更。
+
+## [0.0.11] - 2025-09-11
+### Changed
+- iOS 原生依赖 QuanYu CocoaPods 版本要求从 >= 1.0.8 提升为 >= 1.0.9。
+- Flutter 插件版本同步提升为 0.0.11（与 iOS Podspec 保持一致）。
+
+### Notes
+- 无破坏性变更；仅依赖与版本号同步更新。
+- iOS 工程仍需按要求在 ios/Frameworks 下放置 PortSIPVoIPSDK.framework。

@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'quanyu_sdk'
-  s.version          = '0.0.10'
+  s.version          = '0.0.11'
   s.summary          = 'A Flutter SDK for integrating with native iOS.'
   s.description      = <<-DESC
 A Flutter SDK for integrating with native iOS SDKs.
@@ -26,7 +26,7 @@ A Flutter SDK for integrating with native iOS SDKs.
   if File.directory?(File.join(__dir__, 'Frameworks', 'QuanYu.xcframework'))
     vendored << 'Frameworks/QuanYu.xcframework'
   else
-    s.dependency 'QuanYu', '>= 1.0.8'
+    s.dependency 'QuanYu', '>= 1.0.9'
   end
 
   # PortSIPVoIPSDK: REQUIRED to be placed locally in Frameworks directory
