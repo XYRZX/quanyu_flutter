@@ -52,6 +52,8 @@
 
     // 设置QuanYu SDK的代理，接收SDK回调事件
     [QuanYuSocket shared].delegate = instance;
+    
+    [QuanYuSocket shared].connectionRecoveryMaxInterval = 10;
 
     // 设置PortSIPManager的代理，接收软电话相关回调
     [PortSIPManager shared].delegate = instance;
