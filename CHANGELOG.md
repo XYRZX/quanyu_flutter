@@ -102,3 +102,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Notes
 - 无破坏性变更；仅依赖与版本号同步更新。
 - iOS 工程仍需按要求在 ios/Frameworks 下放置 PortSIPVoIPSDK.framework。
+
+## [0.0.12] - 2025-09-11
+### Changed
+- Flutter 插件版本升级到 0.0.12。
+- iOS Podspec 版本同步为 0.0.12。
+
+### Notes
+- 无破坏性变更；版本同步更新。
