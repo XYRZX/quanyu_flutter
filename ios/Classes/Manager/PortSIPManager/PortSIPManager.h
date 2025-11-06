@@ -8,7 +8,47 @@
 
 #import <Foundation/Foundation.h>
 
+// 条件导入 PortSIP SDK，如不可用则提供最小兜底声明与常量，保证编译通过
+#if __has_include(<PortSIPVoIPSDK/PortSIPVoIPSDK.h>)
 #import <PortSIPVoIPSDK/PortSIPVoIPSDK.h>
+#else
+@class PortSIPSDK;
+@protocol PortSIPEventDelegate;
+
+// 兜底日志级别常量
+#ifndef PORTSIP_LOG_DEBUG
+#define PORTSIP_LOG_DEBUG 2
+#endif
+
+// 兜底音视频编解码常量
+#ifndef AUDIOCODEC_OPUS
+#define AUDIOCODEC_OPUS 0
+#endif
+#ifndef AUDIOCODEC_G729
+#define AUDIOCODEC_G729 1
+#endif
+#ifndef AUDIOCODEC_PCMA
+#define AUDIOCODEC_PCMA 2
+#endif
+#ifndef AUDIOCODEC_PCMU
+#define AUDIOCODEC_PCMU 3
+#endif
+#ifndef VIDEO_CODEC_H264
+#define VIDEO_CODEC_H264 0
+#endif
+
+// 会话无效值兜底
+#ifndef INVALID_SESSION_ID
+#define INVALID_SESSION_ID (-1L)
+#endif
+#endif
+
+// 条件导入 QuanYuSocket，如不可用则做前向声明，避免类型未识别
+#if __has_include(<QuanYu/QuanYuSocket.h>)
+#import <QuanYu/QuanYuSocket.h>
+#else
+@class QuanYuSocket;
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
 

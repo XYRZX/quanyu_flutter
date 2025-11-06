@@ -86,12 +86,13 @@ static AccountManager *instance = nil;
     
     [saveUserInfo setObject:[NSNumber numberWithBool:sender] forKey:@"AutoAnswerCall"];
     [saveUserInfo synchronize];
+    NSLog(@"setAutoAnswerCall: %@", sender ? @"YES" : @"NO");
 }
 
 - (BOOL)AutoAnswerCall{
     NSUserDefaults *saveUserInfo = [NSUserDefaults standardUserDefaults];
     BOOL num = [saveUserInfo boolForKey:@"AutoAnswerCall"];
-    
+    NSLog(@"get AutoAnswerCall: %@", num ? @"YES" : @"NO");
     return num;
 }
 

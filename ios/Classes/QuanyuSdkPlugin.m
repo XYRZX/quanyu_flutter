@@ -567,8 +567,16 @@
  */
 - (void)handleSetAutoAnswerCall:(FlutterMethodCall *)call result:(FlutterResult)result {
     @try {
+        BOOL enabled = [call.arguments[@"enabled"] boolValue];
+        [[AccountManager sharedAccountManager] setAutoAnswerCall:enabled];
 
-        [[AccountManager sharedAccountManager] setAutoAnswerCall:YES];
+        [[QuanYuSocket shared] saveLog:@"AutoAnswer"
+                                message:[NSString stringWithFormat:@"setAutoAnswerCall enabled=%@",
+                                                                enabled ? @"YES" : @"NO"]];
+
+        [self sendEventToFlutter:@{ @"event" : @"auto_answer_changed",
+                                    @"data" : @{ @"enabled" : @(enabled) } }];
+
         result(nil);
     } @catch (NSException *exception) {
         result([FlutterError errorWithCode:@"SET_AUTO_ANSWER_CALL_EXCEPTION"
