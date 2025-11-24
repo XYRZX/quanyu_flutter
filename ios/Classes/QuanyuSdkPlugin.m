@@ -739,6 +739,22 @@
         }];
     }
 
+    if ([[dic allKeys] containsObject:@"opcode"] &&
+        [[dic objectForKey:@"opcode"] isEqualToString:@"C_LogoutIPPhoneOk"]) {
+        [self sendEventToFlutter:@{
+            @"event" : @"code_kicked",
+            @"data" : @{@"type" : @(2), @"deviceName" : @"", @"message" : @"当前账号已被强制登录"}
+        }];
+        [[PortSIPManager shared] unRegister];
+        [[PortSIPManager shared] offLine];
+        [[QuanYuSocket shared] setupKeepAlive:NO];
+        [[QuanYuSocket shared] logout];
+    }else if ([[dic allKeys] containsObject:@"opcode"] &&
+        [[dic objectForKey:@"opcode"] isEqualToString:@"S_RefreshRegistration"]) {
+        
+        [[PortSIPManager shared] refreshRegister];
+    }
+
     if ([[dic allKeys] containsObject:@"registerState"]) {
         int code = [[dic objectForKey:@"registerState"] intValue];
         if ([PortSIPManager shared].sipRegistrationStatus == 0 || [PortSIPManager shared].sipRegistrationStatus == 3 ||

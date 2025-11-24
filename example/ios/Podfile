@@ -31,7 +31,8 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  
+  # 添加Reachability库
+  pod 'Reachability', '~> 3.2'
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do

@@ -2,6 +2,7 @@ PODS:
   - Flutter (1.0.0)
   - quanyu_sdk (0.0.15):
     - Flutter
+  - Reachability (3.7.6)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -9,7 +10,12 @@ PODS:
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - quanyu_sdk (from `.symlinks/plugins/quanyu_sdk/ios`)
+  - Reachability (~> 3.2)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+
+SPEC REPOS:
+  trunk:
+    - Reachability
 
 EXTERNAL SOURCES:
   Flutter:
@@ -22,8 +28,9 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   quanyu_sdk: 5462e483c72a70842afc8a1f38de83d28473c855
+  Reachability: fd0ecd23705e2599e4cceeb943222ae02296cbc6
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
 
-PODFILE CHECKSUM: 3e5457bde41755736b45309e4f7638a5b18fdeba
+PODFILE CHECKSUM: 3629563269c6ae4f75d1620248e28bd0a419bfbf
 
 COCOAPODS: 1.16.2
