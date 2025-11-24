@@ -52,7 +52,7 @@
 
     // 设置QuanYu SDK的代理，接收SDK回调事件
     [QuanYuSocket shared].delegate = instance;
-    
+
     [QuanYuSocket shared].connectionRecoveryMaxInterval = 10;
 
     // 设置PortSIPManager的代理，接收软电话相关回调
@@ -132,7 +132,7 @@
         NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
 
         // 注销之前旧的
-//        [[PortSIPManager shared] unRegister];
+        //        [[PortSIPManager shared] unRegister];
 
         // 设置PortSIPManager的代理和用户信息
         [PortSIPManager shared].userInfo = userDict;
@@ -142,7 +142,7 @@
 
         // 重连
         [[QuanYuSocket shared] reStarConnectServer];
-    } else if ([[info objectForKey:@"netSatus"] isEqualToString:@"无网"]){
+    } else if ([[info objectForKey:@"netSatus"] isEqualToString:@"无网"]) {
 
         [self sendEventToFlutter:@{
             @"event" : @"soft_phone_registration_status",
@@ -157,7 +157,7 @@
         // 下线
         [[PortSIPManager shared] offLine];
 
-//        [[PortSIPManager shared] unRegister];
+        //        [[PortSIPManager shared] unRegister];
     }
 }
 
@@ -218,7 +218,7 @@
                                 [[NSNotificationCenter defaultCenter] removeObserver:self];
                                 // 登录失败,返回失败信息
                                 result(@{@"success" : @NO, @"message" : errorMessage});
-                                
+
                                 [[QuanYuSocket shared]
                                     saveLog:@"Service-portSip-ECoreErrorNone"
                                     message:[NSString stringWithFormat:@"Service-portSip-ECoreErrorNone"]];
@@ -368,6 +368,17 @@
         if (!message || message.length == 0) {
             result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"消息内容不能为空" details:nil]);
             return;
+        }
+
+        if (message) {
+            NSDictionary *dic = [NSString dictionaryWithJsonString:message];
+            if ([dic isKindOfClass:[NSDictionary class]]) {
+                NSString *opcode = dic[@"opcode"];
+                if ([opcode isKindOfClass:[NSString class]] && ([opcode isEqualToString:@"C_Hangup"] || [opcode isEqualToString:@"C_Hangup"])) {
+                    // 调用挂机方法时，需要把软电话也挂掉。（2_xxx的socket发送C_hangup消息或取消呼叫时 也调用sdk的挂机方法）
+                    [[PortSIPManager shared] hangUp];
+                }
+            }
         }
 
         [[QuanYuSocket shared] sendRequestWithMessage:message];
@@ -570,12 +581,11 @@
         BOOL enabled = [call.arguments[@"enabled"] boolValue];
         [[AccountManager sharedAccountManager] setAutoAnswerCall:enabled];
 
-        [[QuanYuSocket shared] saveLog:@"AutoAnswer"
-                                message:[NSString stringWithFormat:@"setAutoAnswerCall enabled=%@",
-                                                                enabled ? @"YES" : @"NO"]];
+        [[QuanYuSocket shared]
+            saveLog:@"AutoAnswer"
+            message:[NSString stringWithFormat:@"setAutoAnswerCall enabled=%@", enabled ? @"YES" : @"NO"]];
 
-        [self sendEventToFlutter:@{ @"event" : @"auto_answer_changed",
-                                    @"data" : @{ @"enabled" : @(enabled) } }];
+        [self sendEventToFlutter:@{@"event" : @"auto_answer_changed", @"data" : @{@"enabled" : @(enabled)}}];
 
         result(nil);
     } @catch (NSException *exception) {
@@ -666,19 +676,19 @@
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (self.eventSink) {
-            NSLog(@"sendEventToFlutter:%@", normalized);
-            self.eventSink([normalized copy]);
-        } else {
-            if (!self.eventBuffer) {
-                self.eventBuffer = [NSMutableArray array];
-            }
-            // 控制缓冲区最大50条
-            if (self.eventBuffer.count >= 50) {
-                [self.eventBuffer removeObjectAtIndex:0];
-            }
-            [self.eventBuffer addObject:[normalized copy]];
-        }
+      if (self.eventSink) {
+          NSLog(@"sendEventToFlutter:%@", normalized);
+          self.eventSink([normalized copy]);
+      } else {
+          if (!self.eventBuffer) {
+              self.eventBuffer = [NSMutableArray array];
+          }
+          // 控制缓冲区最大50条
+          if (self.eventBuffer.count >= 50) {
+              [self.eventBuffer removeObjectAtIndex:0];
+          }
+          [self.eventBuffer addObject:[normalized copy]];
+      }
     });
 }
 
@@ -783,7 +793,7 @@
     NSLog(@"连接中[onConnecting]: 尝试次数 %d", attempts);
 
     [[QuanYuSocket shared] saveLog:@"start_re_connect" message:[NSString stringWithFormat:@"开始重连：%d", attempts]];
-    [self sendEventToFlutter:@{ @"event" : @"onConnecting", @"data" : @(attempts) }];
+    [self sendEventToFlutter:@{@"event" : @"onConnecting", @"data" : @(attempts)}];
 }
 
 /**
@@ -792,7 +802,7 @@
  */
 - (void)onConnected {
     NSLog(@"连接成功[onConnected]");
-    [self sendEventToFlutter:@{ @"event" : @"onConnected" }];
+    [self sendEventToFlutter:@{@"event" : @"onConnected"}];
 }
 
 /**
@@ -809,7 +819,8 @@
         saveLog:@"OnDisconnect"
         message:[NSString stringWithFormat:@"连接断开[onDisconnected]: 状态码 %d, 原因: %@", code, reason]];
 
-    [self sendEventToFlutter:@{ @"event" : @"onDisconnected", @"data" : @{ @"code" : @(code), @"reason" : reason ?: @"" } }];
+    [self
+        sendEventToFlutter:@{@"event" : @"onDisconnected", @"data" : @{@"code" : @(code), @"reason" : reason ?: @""}}];
 }
 
 /**
@@ -824,12 +835,12 @@
     NSString *safeReason = reason ?: @"未知错误";
 
     NSLog(@"WebSocket连接失败回调[onConnectFailed]: 状态码 %d, 原因: %@", code, safeReason);
-    
+
     [[QuanYuSocket shared]
         saveLog:@"disconnect"
         message:[NSString stringWithFormat:@"断开[onConnectFailedWithCode]: 状态码 %d, 原因: %@", code, reason]];
-    
-    [self sendEventToFlutter:@{ @"event" : @"onConnectFailed", @"data" : @{ @"code" : @(code), @"reason" : safeReason } }];
+
+    [self sendEventToFlutter:@{@"event" : @"onConnectFailed", @"data" : @{@"code" : @(code), @"reason" : safeReason}}];
 }
 
 #pragma mark - PortSIPManagerDelegate
@@ -920,12 +931,12 @@
 
     // 将缓冲的事件依次下发
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (self.eventBuffer.count > 0 && self.eventSink) {
-            for (NSDictionary *ev in self.eventBuffer) {
-                [self sendEventToFlutter:ev];
-            }
-            [self.eventBuffer removeAllObjects];
-        }
+      if (self.eventBuffer.count > 0 && self.eventSink) {
+          for (NSDictionary *ev in self.eventBuffer) {
+              [self sendEventToFlutter:ev];
+          }
+          [self.eventBuffer removeAllObjects];
+      }
     });
 
     return nil;

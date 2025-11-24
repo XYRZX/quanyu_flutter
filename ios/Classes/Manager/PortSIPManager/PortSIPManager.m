@@ -316,6 +316,14 @@
     }
 }
 
+// 挂机
+- (void)hangUp {
+    if (_activeSessionId != INVALID_SESSION_ID) {
+        [_portSIPSDK hangUp:_activeSessionId];
+    }
+}
+
+
 // 喇叭扩音
 - (void)setVoiceNum:(int)sender {
     [[AccountManager sharedAccountManager] setVoiceNum:sender];

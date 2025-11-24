@@ -90,6 +90,9 @@ NS_ASSUME_NONNULL_BEGIN
 // 挂起
 - (void)hungUpCall;
 
+// 挂机
+- (void)hangUp;
+
 // 喇叭扩音
 - (void)setVoiceNum:(int)sender;
 
