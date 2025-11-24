@@ -51,7 +51,8 @@ class MethodChannelQuanyuSdk extends QuanyuSdkPlatform {
       required String secretKey,
       required String gid,
       required String code,
-      required String extPhone}) async {
+      required String extPhone,
+      bool busy = false}) async {
     final result = await methodChannel.invokeMethod('login', {
       'loginUrl': loginUrl,
       'appKey': appKey,
@@ -59,6 +60,7 @@ class MethodChannelQuanyuSdk extends QuanyuSdkPlatform {
       'gid': gid,
       'code': code,
       'extPhone': extPhone,
+      'busy': busy,
     });
     return Map<String, dynamic>.from(result);
   }

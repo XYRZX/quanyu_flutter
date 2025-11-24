@@ -54,13 +54,15 @@ abstract class QuanyuSdkPlatform extends PlatformInterface {
   /// - [Map<String, dynamic>]: 包含登录结果的映射
   ///   - success: bool 登录是否成功
   ///   - message: String 登录结果消息
-  Future<Map<String, dynamic>> login(
-      {required String loginUrl,
-      required String appKey,
-      required String secretKey,
-      required String gid,
-      required String code,
-      required String extPhone}) {
+  Future<Map<String, dynamic>> login({
+    required String loginUrl,
+    required String appKey,
+    required String secretKey,
+    required String gid,
+    required String code,
+    required String extPhone,
+    bool busy = false,
+  }) {
     throw UnimplementedError('login() has not been implemented.');
   }
 

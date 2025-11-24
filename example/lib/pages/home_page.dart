@@ -287,6 +287,34 @@ class _HomePageState extends State<HomePage> {
     // 使用事件管理器
     _setupEventListeners();
     await _registerSoftPhone();
+    await _applyInitialBusyFromPrefs();
+  }
+
+  Future<void> _applyInitialBusyFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final busy = prefs.getBool('login_busy') ?? false;
+      if (busy) {
+        await _sendSetBusyOpcode();
+        if (mounted) {
+          setState(() {
+            _agentState = 2;
+            _dropDownText = _fullAgentStateMap[2] ?? '置忙中';
+          });
+        }
+      } else {
+        await _sendSetFreeOpcode();
+        if (mounted) {
+          setState(() {
+            _agentState = 1;
+            _dropDownText = _fullAgentStateMap[1] ?? '空闲';
+          });
+        }
+      }
+      _updateAvailableStates();
+    } catch (e) {
+      debugPrint('应用初始置忙状态失败: $e');
+    }
   }
 
   /// 设置事件监听器
@@ -592,6 +620,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _sendSetBusyOpcode() async {
     const String message = '{"opcode": "C_SetBusy"}';
     await _sendCustomMessage(message);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('login_busy', true);
+    } catch (_) {}
   }
 
   /// 发送C_SetFree指令
@@ -599,6 +631,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _sendSetFreeOpcode() async {
     const String message = '{"opcode": "C_SetFree"}';
     await _sendCustomMessage(message);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('login_busy', false);
+    } catch (_) {}
   }
 
   /// 发送C_SetRest指令
@@ -606,6 +642,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _sendSetRestOpcode() async {
     const String message = '{"opcode": "C_SetRest"}';
     await _sendCustomMessage(message);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('login_busy', false);
+    } catch (_) {}
   }
 
   /// 发送C_Silence指令

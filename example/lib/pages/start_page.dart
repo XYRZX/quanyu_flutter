@@ -82,6 +82,8 @@ class _StartPageState extends State<StartPage> {
   /// 执行登录操作
   Future<Map<String, dynamic>> _performLogin(
       LoginCredentials credentials) async {
+    final prefs = await SharedPreferences.getInstance();
+    final busy = prefs.getBool('login_busy') ?? false;
     return await QuanyuSdk().login(
       loginUrl: credentials.loginUrl,
       appKey: credentials.appKey,
@@ -89,6 +91,7 @@ class _StartPageState extends State<StartPage> {
       gid: credentials.gid,
       code: credentials.code,
       extPhone: credentials.extPhone,
+      busy: busy,
     );
   }
 

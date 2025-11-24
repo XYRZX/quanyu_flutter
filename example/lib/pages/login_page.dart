@@ -23,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   LoginState _loginState = LoginState.idle;
   String? _errorMessage;
   bool _isLogEnabled = false; // 日志开关状态
+  bool _isBusyEnabled = false;
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _LoginPageState extends State<LoginPage> {
     _initializeControllers();
     _loadSavedData();
     _loadLogSettings();
+    _loadBusySettings();
     _setupEventListeners();
   }
 
@@ -159,6 +161,22 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _loadBusySettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedBusyState = prefs.getBool('login_busy') ?? false;
+      if (_isBusyEnabled != savedBusyState) {
+        setState(() {
+          _isBusyEnabled = savedBusyState;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('加载置忙设置失败: $e');
+      }
+    }
+  }
+
   /// 切换日志开关
   Future<void> _toggleLogEnabled(bool enabled) async {
     try {
@@ -179,6 +197,20 @@ class _LoginPageState extends State<LoginPage> {
       _showMessage('设置日志失败: $e', Colors.red);
       if (kDebugMode) {
         debugPrint('设置日志失败: $e');
+      }
+    }
+  }
+
+  Future<void> _toggleBusyEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('login_busy', enabled);
+      setState(() {
+        _isBusyEnabled = enabled;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('设置置忙失败: $e');
       }
     }
   }
@@ -206,6 +238,10 @@ class _LoginPageState extends State<LoginPage> {
 
       if (result['success'] == true) {
         await _saveLoginData(credentials);
+        if (_isBusyEnabled) {
+          await QuanyuSdk()
+              .sendRequestWithMessage(message: '{"opcode": "C_SetBusy"}');
+        }
         _updateLoginState(LoginState.success);
         _showSuccessMessage(result['message'] ?? '登录成功');
         _navigateToHomePage();
@@ -227,6 +263,7 @@ class _LoginPageState extends State<LoginPage> {
       gid: credentials.gid,
       code: credentials.code,
       extPhone: credentials.extPhone,
+      busy: _isBusyEnabled,
     );
   }
 
@@ -278,6 +315,9 @@ class _LoginPageState extends State<LoginPage> {
           await prefs.setString(prefKey, entry.value);
         }
       }
+
+      // 保存置忙状态
+      await prefs.setBool('login_busy', _isBusyEnabled);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('保存登录数据失败: $e');
@@ -304,6 +344,8 @@ class _LoginPageState extends State<LoginPage> {
                 _buildInputFields(),
                 const SizedBox(height: 20),
                 _buildLogSwitch(),
+                const SizedBox(height: 20),
+                _buildBusySwitch(),
                 const SizedBox(height: 20),
                 _buildLoginButton(),
                 if (_loginState == LoginState.error) ...[
@@ -363,6 +405,45 @@ class _LoginPageState extends State<LoginPage> {
             value: _isLogEnabled,
             onChanged:
                 _loginState == LoginState.loading ? null : _toggleLogEnabled,
+            activeColor: Colors.blue,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBusySwitch() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.schedule,
+            color: Colors.grey[600],
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              '登录后置忙',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Switch(
+            value: _isBusyEnabled,
+            onChanged:
+                _loginState == LoginState.loading ? null : _toggleBusyEnabled,
             activeColor: Colors.blue,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),

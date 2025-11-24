@@ -179,6 +179,7 @@
         NSString *gid = call.arguments[@"gid"];
         NSString *code = call.arguments[@"code"];
         NSString *extPhone = call.arguments[@"extPhone"];
+        BOOL busy = [call.arguments[@"busy"] boolValue];
 
         // 参数验证
         if (!loginUrl || loginUrl.length == 0) {
@@ -203,6 +204,9 @@
         model.extPhone = extPhone;
         model.appKey = appKey;
         model.secretKey = secretKey;
+        if (busy) {
+            model.freeState = @"busy";
+        }
 
         // 先连接WebSocket
         [[QuanYuSocket shared] login:model
@@ -374,8 +378,10 @@
             NSDictionary *dic = [NSString dictionaryWithJsonString:message];
             if ([dic isKindOfClass:[NSDictionary class]]) {
                 NSString *opcode = dic[@"opcode"];
-                if ([opcode isKindOfClass:[NSString class]] && ([opcode isEqualToString:@"C_Hangup"] || [opcode isEqualToString:@"C_Hangup"])) {
-                    // 调用挂机方法时，需要把软电话也挂掉。（2_xxx的socket发送C_hangup消息或取消呼叫时 也调用sdk的挂机方法）
+                if ([opcode isKindOfClass:[NSString class]] &&
+                    ([opcode isEqualToString:@"C_Hangup"] || [opcode isEqualToString:@"C_Hangup"])) {
+                    // 调用挂机方法时，需要把软电话也挂掉。（2_xxx的socket发送C_hangup消息或取消呼叫时
+                    // 也调用sdk的挂机方法）
                     [[PortSIPManager shared] hangUp];
                 }
             }
