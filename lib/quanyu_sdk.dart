@@ -53,7 +53,8 @@ class QuanyuSdk {
       required String gid,
       required String code,
       required String extPhone,
-      bool busy = false}) async {
+      bool busy = false,
+      bool force = false}) async {
     final result = await QuanyuSdkPlatform.instance.login(
         loginUrl: loginUrl,
         appKey: appKey,
@@ -61,7 +62,8 @@ class QuanyuSdk {
         gid: gid,
         code: code,
         extPhone: extPhone,
-        busy: busy);
+        busy: busy,
+        force: force);
 
     // 登录成功后自动注册软电话
     if (result['success'] == true) {

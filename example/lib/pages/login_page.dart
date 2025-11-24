@@ -249,7 +249,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   /// 执行登录操作
-  Future<void> _login() async {
+  Future<void> _login({bool force = false}) async {
     final credentials = LoginCredentials.fromControllers(
       urlController: _controllers['url']!,
       appKeyController: _controllers['appKey']!,
@@ -267,7 +267,7 @@ class _LoginPageState extends State<LoginPage> {
     _updateLoginState(LoginState.loading);
 
     try {
-      final result = await _performLogin(credentials);
+      final result = await _performLogin(credentials, force: force);
 
       if (result['success'] == true) {
         await _saveLoginData(credentials);
@@ -287,8 +287,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   /// 执行SDK登录
-  Future<Map<String, dynamic>> _performLogin(
-      LoginCredentials credentials) async {
+  Future<Map<String, dynamic>> _performLogin(LoginCredentials credentials,
+      {bool force = false}) async {
     return await QuanyuSdk().login(
       loginUrl: credentials.loginUrl,
       appKey: credentials.appKey,
@@ -297,6 +297,7 @@ class _LoginPageState extends State<LoginPage> {
       code: credentials.code,
       extPhone: credentials.extPhone,
       busy: _isBusyEnabled,
+      force: force,
     );
   }
 
@@ -341,7 +342,7 @@ class _LoginPageState extends State<LoginPage> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _login();
+                _login(force: true);
               },
               child: const Text('强制登录'),
             ),

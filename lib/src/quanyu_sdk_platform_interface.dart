@@ -62,6 +62,7 @@ abstract class QuanyuSdkPlatform extends PlatformInterface {
     required String code,
     required String extPhone,
     bool busy = false,
+    bool force = false,
   }) {
     throw UnimplementedError('login() has not been implemented.');
   }

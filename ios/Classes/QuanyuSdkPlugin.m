@@ -180,6 +180,7 @@
         NSString *code = call.arguments[@"code"];
         NSString *extPhone = call.arguments[@"extPhone"];
         BOOL busy = [call.arguments[@"busy"] boolValue];
+        BOOL force = [call.arguments[@"force"] boolValue];
 
         // 参数验证
         if (!loginUrl || loginUrl.length == 0) {
@@ -210,6 +211,7 @@
 
         // 先连接WebSocket
         [[QuanYuSocket shared] login:model
+                               force:force
                           completion:^(BOOL success, NSString *_Nonnull errorMessage) {
                             if (success) {
                                 [[NSNotificationCenter defaultCenter] addObserver:self
@@ -736,7 +738,7 @@
             @"data" : @{@"type" : @(type), @"deviceName" : deviceName ?: @"", @"message" : msg}
         }];
     }
-    
+
     if ([[dic allKeys] containsObject:@"registerState"]) {
         int code = [[dic objectForKey:@"registerState"] intValue];
         if ([PortSIPManager shared].sipRegistrationStatus == 0 || [PortSIPManager shared].sipRegistrationStatus == 3 ||
