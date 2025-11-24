@@ -749,9 +749,9 @@
         [[PortSIPManager shared] offLine];
         [[QuanYuSocket shared] setupKeepAlive:NO];
         [[QuanYuSocket shared] logout];
-    }else if ([[dic allKeys] containsObject:@"opcode"] &&
-        [[dic objectForKey:@"opcode"] isEqualToString:@"S_RefreshRegistration"]) {
-        
+    } else if ([[dic allKeys] containsObject:@"opcode"] &&
+               [[dic objectForKey:@"opcode"] isEqualToString:@"S_RefreshRegistration"]) {
+
         [[PortSIPManager shared] refreshRegister];
     }
 
@@ -867,6 +867,15 @@
     [[QuanYuSocket shared]
         saveLog:@"OnDisconnect"
         message:[NSString stringWithFormat:@"连接断开[onDisconnected]: 状态码 %d, 原因: %@", code, reason]];
+
+    // 坐席连接断开时的软电话注销策略：
+    // 1. 若当前未通话（activeSessionId 为 INVALID_SESSION_ID），立即注销软电话；
+    // 2. 若当前通话中，则设置标记，在通话结束回调（onInviteClosed）中执行注销。
+    if ([PortSIPManager shared].activeSessionId == INVALID_SESSION_ID) {
+        [[PortSIPManager shared] unRegister];
+    } else {
+        [PortSIPManager shared].unregisterWhenCallEnds = YES;
+    }
 
     [self
         sendEventToFlutter:@{@"event" : @"onDisconnected", @"data" : @{@"code" : @(code), @"reason" : reason ?: @""}}];

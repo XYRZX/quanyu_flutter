@@ -497,6 +497,13 @@
     if ([self.delegate respondsToSelector:@selector(CallJSWithJSonStr:)]) {
         [self.delegate CallJSWithJSonStr:jsString];
     }
+
+    // 若之前因坐席连接断开且正在通话，通话结束后需要执行软电话注销
+    if (self.unregisterWhenCallEnds) {
+        // 执行注销并清除标记，避免重复触发
+        [self unRegister];
+        self.unregisterWhenCallEnds = NO;
+    }
 }
 
 - (void)onInviteConnected:(long)sessionId {
