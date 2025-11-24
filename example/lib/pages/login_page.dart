@@ -65,7 +65,40 @@ class _LoginPageState extends State<LoginPage> {
   void _handleAccountKickedEvent(Map<String, dynamic> eventMap) {
     if (!mounted) return;
 
-    final message = eventMap['data']?['message'] ?? '账号在其他设备登录';
+    Map<String, dynamic>? data;
+    try {
+      if (eventMap['data'] != null) {
+        data = Map<String, dynamic>.from(eventMap['data'] as Map);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('code_kicked事件数据类型转换失败: $e');
+      }
+    }
+
+    final dynamic typeDyn = data?['type'];
+    final int type = typeDyn is int
+        ? typeDyn
+        : typeDyn is num
+            ? typeDyn.toInt()
+            : 0;
+    final String deviceName = (data?['deviceName'] ?? '') as String;
+
+    if (type == 1) {
+      _clearLoginStatus();
+      _updateLoginState(LoginState.idle);
+      _showSeatConflictDialog(deviceName);
+      return;
+    }
+
+    if (type == 3) {
+      _clearLoginStatus();
+      _updateLoginState(LoginState.idle);
+      _showSeatLimitDialog();
+      return;
+    }
+
+    final String message = (data?['message'] ?? '账号在其他设备登录') as String;
     _handleAccountKicked(message.isNotEmpty ? message : '账号在其他设备登录');
   }
 
@@ -287,6 +320,56 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     }
+  }
+
+  void _showSeatConflictDialog(String deviceName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('登录冲突'),
+          content:
+              Text('当前账号已被${deviceName.isNotEmpty ? deviceName : '其他设备'}登录'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _login();
+              },
+              child: const Text('强制登录'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSeatLimitDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('提示'),
+          content: const Text('授权坐席超限'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// 导航到主页

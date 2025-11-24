@@ -382,6 +382,19 @@ class _HomePageState extends State<HomePage> {
       debugPrint('code_kicked事件数据类型转换失败: $e');
       return;
     }
+
+    final dynamic typeDyn = data?['type'];
+    final int type = typeDyn is int
+        ? typeDyn
+        : typeDyn is num
+            ? typeDyn.toInt()
+            : 0;
+
+    if (type == 2) {
+      _showForcedLoginDialog();
+      return;
+    }
+
     _handleAccountKicked(data?['message'] ?? '账号在其他设备登录');
   }
 
@@ -892,6 +905,45 @@ class _HomePageState extends State<HomePage> {
         );
       }
     }
+  }
+
+  Future<void> _logoutAndReturnToLogin() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_loginStatusKey, false);
+      await QuanyuSdk().logout();
+    } catch (e) {
+      debugPrint('退出登录失败: $e');
+    } finally {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+    }
+  }
+
+  void _showForcedLoginDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('提示'),
+          content: const Text('被其他设备强制登录'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logoutAndReturnToLogin();
+              },
+              child: const Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// 退出登录

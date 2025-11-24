@@ -712,6 +712,31 @@
 
     NSDictionary *dic = [NSString dictionaryWithJsonString:message];
 
+    // 坐席冲突事件处理：账号在其他设备登录/被强制登录/授权坐席超限
+    if ([[dic allKeys] containsObject:@"opcode"] && [[dic objectForKey:@"opcode"] isEqualToString:@"S_seatConflict"]) {
+        NSNumber *typeNum = dic[@"type"];
+        NSString *deviceName = dic[@"deviceName"];
+        int type = 0;
+        if ([typeNum respondsToSelector:@selector(intValue)]) {
+            type = [typeNum intValue];
+        }
+
+        NSString *msg = @"";
+        if (type == 1) {
+            msg = [NSString stringWithFormat:@"账号在其他设备登录%@%@",
+                                             (deviceName && deviceName.length > 0) ? @"：" : @"", deviceName ?: @""];
+        } else if (type == 2) {
+            msg = @"被其他设备强制登录";
+        } else if (type == 3) {
+            msg = @"授权坐席超限";
+        }
+
+        [self sendEventToFlutter:@{
+            @"event" : @"code_kicked",
+            @"data" : @{@"type" : @(type), @"deviceName" : deviceName ?: @"", @"message" : msg}
+        }];
+    }
+    
     if ([[dic allKeys] containsObject:@"registerState"]) {
         int code = [[dic objectForKey:@"registerState"] intValue];
         if ([PortSIPManager shared].sipRegistrationStatus == 0 || [PortSIPManager shared].sipRegistrationStatus == 3 ||
