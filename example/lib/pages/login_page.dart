@@ -137,17 +137,17 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedLogState = prefs.getBool('log_enabled') ?? false;
-      
+
       // 从SDK获取当前日志状态
       final currentLogState = await QuanyuSdk().getLogEnabled();
-      
+
       // 只有当状态真正改变时才调用setState
       if (_isLogEnabled != currentLogState) {
         setState(() {
           _isLogEnabled = currentLogState;
         });
       }
-      
+
       // 如果本地保存的状态与SDK状态不一致，以SDK为准并更新本地
       if (savedLogState != currentLogState) {
         await prefs.setBool('log_enabled', currentLogState);
@@ -163,14 +163,14 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _toggleLogEnabled(bool enabled) async {
     try {
       await QuanyuSdk().setLogEnabled(enabled: enabled);
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('log_enabled', enabled);
-      
+
       setState(() {
         _isLogEnabled = enabled;
       });
-      
+
       _showMessage(
         enabled ? '日志已开启' : '日志已关闭',
         enabled ? Colors.green : Colors.orange,
@@ -349,7 +349,7 @@ class _LoginPageState extends State<LoginPage> {
             size: 20,
           ),
           const SizedBox(width: 12),
-          Expanded(
+          const Expanded(
             child: Text(
               '调试日志',
               style: TextStyle(
@@ -361,7 +361,8 @@ class _LoginPageState extends State<LoginPage> {
           ),
           Switch(
             value: _isLogEnabled,
-            onChanged: _loginState == LoginState.loading ? null : _toggleLogEnabled,
+            onChanged:
+                _loginState == LoginState.loading ? null : _toggleLogEnabled,
             activeColor: Colors.blue,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -447,7 +448,9 @@ class _LoginPageState extends State<LoginPage> {
     eventManager.unregisterEventHandler(
         'login_success', (eventMap) => _handleLoginSuccessEvent(eventMap));
 
-    _controllers.values.forEach((controller) => controller.dispose());
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 }

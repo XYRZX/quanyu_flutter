@@ -1,16 +1,16 @@
 import Flutter
 import QuanYu
-import Reachability
+import Network
 import UIKit
 import quanyu_sdk
 
-@UIApplicationMain
+@main
 @objc class AppDelegate: FlutterAppDelegate {
 
     // MARK: - Properties
     private var enableForceBackground: Bool = false
     private var backtaskIdentifier: UIBackgroundTaskIdentifier = .invalid
-    private var reachability: Reachability?
+    private var pathMonitor = NWPathMonitor()
 
     override func application(
         _ application: UIApplication,
@@ -103,36 +103,21 @@ import quanyu_sdk
 
     // MARK: - Network Monitoring
     private func monitorNetWork() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(reachabilityChanged(_:)),
-            name: .reachabilityChanged,
-            object: nil
-        )
-
-        reachability = Reachability.forInternetConnection()
-        reachability?.startNotifier()
-    }
-
-    @objc private func reachabilityChanged(_ notification: Notification) {
-        guard let curReach = notification.object as? Reachability else { return }
-
-        let status = curReach.currentReachabilityStatus()
-        var dic: [String: String] = [:]
-
-        if status == .NotReachable {
-            // 无网
-            dic["netSatus"] = "无网"
-        } else {
-            // 有网
-            dic["netSatus"] = "有网"
+        pathMonitor.pathUpdateHandler = { path in
+            var dic: [String: String] = [:]
+            if path.status == .satisfied {
+                dic["netSatus"] = "有网"
+            } else {
+                dic["netSatus"] = "无网"
+            }
+            NotificationCenter.default.post(
+                name: Notification.Name("internetChange"),
+                object: nil,
+                userInfo: dic
+            )
         }
-
-        NotificationCenter.default.post(
-            name: Notification.Name("internetChange"),
-            object: nil,
-            userInfo: dic
-        )
+        let queue = DispatchQueue(label: "com.quanyu.network.monitor")
+        pathMonitor.start(queue: queue)
     }
 
     // 处理终止事件
@@ -141,7 +126,4 @@ import quanyu_sdk
 //    }
 }
 
-// MARK: - Extensions for Reachability
-extension Notification.Name {
-    static let reachabilityChanged = Notification.Name("kReachabilityChangedNotification")
-}
+// MARK: -
