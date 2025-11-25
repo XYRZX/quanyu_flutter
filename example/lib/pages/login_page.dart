@@ -24,6 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   String? _errorMessage;
   bool _isLogEnabled = false; // 日志开关状态
   bool _isBusyEnabled = false;
+  bool _isForceEnabled = false;
 
   @override
   void initState() {
@@ -249,7 +250,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   /// 执行登录操作
-  Future<void> _login({bool force = false}) async {
+  Future<void> _login({bool? force}) async {
     final credentials = LoginCredentials.fromControllers(
       urlController: _controllers['url']!,
       appKeyController: _controllers['appKey']!,
@@ -267,7 +268,10 @@ class _LoginPageState extends State<LoginPage> {
     _updateLoginState(LoginState.loading);
 
     try {
-      final result = await _performLogin(credentials, force: force);
+      final result = await _performLogin(
+        credentials,
+        force: force ?? (_isForceEnabled ? true : null),
+      );
 
       if (result['success'] == true) {
         await _saveLoginData(credentials);
@@ -288,7 +292,7 @@ class _LoginPageState extends State<LoginPage> {
 
   /// 执行SDK登录
   Future<Map<String, dynamic>> _performLogin(LoginCredentials credentials,
-      {bool force = false}) async {
+      {bool? force}) async {
     return await QuanyuSdk().login(
       loginUrl: credentials.loginUrl,
       appKey: credentials.appKey,
@@ -338,13 +342,6 @@ class _LoginPageState extends State<LoginPage> {
                 Navigator.of(context).pop();
               },
               child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _login(force: true);
-              },
-              child: const Text('强制登录'),
             ),
           ],
         );
@@ -430,6 +427,8 @@ class _LoginPageState extends State<LoginPage> {
                 _buildLogSwitch(),
                 const SizedBox(height: 20),
                 _buildBusySwitch(),
+                const SizedBox(height: 20),
+                _buildForceSwitch(),
                 const SizedBox(height: 20),
                 _buildLoginButton(),
                 if (_loginState == LoginState.error) ...[
@@ -528,6 +527,50 @@ class _LoginPageState extends State<LoginPage> {
             value: _isBusyEnabled,
             onChanged:
                 _loginState == LoginState.loading ? null : _toggleBusyEnabled,
+            activeColor: Colors.blue,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForceSwitch() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.security,
+            color: Colors.grey[600],
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              '强制登录',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Switch(
+            value: _isForceEnabled,
+            onChanged: _loginState == LoginState.loading
+                ? null
+                : (enabled) {
+                    setState(() {
+                      _isForceEnabled = enabled;
+                    });
+                  },
             activeColor: Colors.blue,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),

@@ -53,8 +53,8 @@ class MethodChannelQuanyuSdk extends QuanyuSdkPlatform {
       required String code,
       required String extPhone,
       bool busy = false,
-      bool force = false}) async {
-    final result = await methodChannel.invokeMethod('login', {
+      bool? force}) async {
+    final args = {
       'loginUrl': loginUrl,
       'appKey': appKey,
       'secretKey': secretKey,
@@ -62,8 +62,11 @@ class MethodChannelQuanyuSdk extends QuanyuSdkPlatform {
       'code': code,
       'extPhone': extPhone,
       'busy': busy,
-      'force': force,
-    });
+    };
+    if (force != null) {
+      args['force'] = force;
+    }
+    final result = await methodChannel.invokeMethod('login', args);
     return Map<String, dynamic>.from(result);
   }
 

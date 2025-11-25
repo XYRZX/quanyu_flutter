@@ -13,6 +13,7 @@
 
 #import <QuanYu/QuanYu.h>
 #import <QuanYu/QuanYuSocket.h>
+#import <objc/message.h>
 
 #define MAX_LINES 8
 
@@ -30,6 +31,8 @@
 
 @property(nonatomic, strong) NSTimer *autoRegisterTimer;
 @property(nonatomic, assign) int autoRegisterRetryTimes;
+
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *sessionVideoFlags;
 
 @end
 
@@ -64,6 +67,7 @@
         _activeSessionId = INVALID_SESSION_ID;
 
         _mSoundService = [[SoundService alloc] init];
+        _sessionVideoFlags = [NSMutableDictionary dictionary];
     }
     return self;
 }
@@ -323,6 +327,21 @@
     }
 }
 
+// 恢复通话
+- (void)attemptUpdateCall {
+    if (_activeSessionId == INVALID_SESSION_ID) {
+        return;
+    }
+    int ret = -1;
+    SEL sel0 = NSSelectorFromString(@"updateCall:enableAudio:enableVideo:");
+    BOOL enableAudio = YES;
+    BOOL enableVideo = NO;
+
+    [_portSIPSDK updateCall:_activeSessionId enableAudio:YES enableVideo:NO];
+
+    [[QuanYuSocket shared] saveLog:@"updateCall"
+                           message:[NSString stringWithFormat:@"sessionId=%ld, ret=%d", _activeSessionId, ret]];
+}
 
 // 喇叭扩音
 - (void)setVoiceNum:(int)sender {
@@ -340,7 +359,7 @@
 - (void)refreshRegister {
 
     if (_sipRegistrationStatus == 0) { // 0 - 未注册
-
+        [self onLine];
     } else if (_sipRegistrationStatus == 1) { // 1 - 注册中
 
     } else if (_sipRegistrationStatus == 2) { // 2 - 已注册
@@ -351,15 +370,7 @@
             [self.delegate pushAppLogToWeb:@"Refresh" info:@"Refresh Registration..."];
         }
     } else if (_sipRegistrationStatus == 3) { // 3 - 注册失败/已注销
-
-        if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
-            [self.delegate pushAppLogToWeb:@"Refresh" info:@"retry a new register"];
-        }
-
-        [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:@"注销软电话"];
-        [(id)_portSIPSDK unInitialize];
-
-        _sipInitialized = NO;
+        [self onLine];
     }
 }
 
@@ -498,12 +509,12 @@
         [self.delegate CallJSWithJSonStr:jsString];
     }
 
-    // 若之前因坐席连接断开且正在通话，通话结束后需要执行软电话注销
     if (self.unregisterWhenCallEnds) {
-        // 执行注销并清除标记，避免重复触发
         [self unRegister];
         self.unregisterWhenCallEnds = NO;
+        [self onLine];
     }
+    [_sessionVideoFlags removeObjectForKey:[NSNumber numberWithLong:sessionId]];
 }
 
 - (void)onInviteConnected:(long)sessionId {
@@ -609,15 +620,16 @@
 
     BOOL shouldAutoAnswer = headerHasDecision ? headerAutoAnswer : autoAnswerFallback;
 
-    [[QuanYuSocket shared]
-        saveLog:@"AutoAnswer"
-        message:[NSString stringWithFormat:@"[Decision]incoming sessionId=%ld, existsAudio=%d, existsVideo=%d, "
-                                           @"idleLineIndex=%d, header=%@, shouldAutoAnswer=%@",
-                                           sessionId, existsAudio, existsVideo, index,
-                                           headerHasDecision ? normHeader : @"<none>",
-                                           shouldAutoAnswer ? @"YES" : @"NO"]];
+    [[QuanYuSocket shared] saveLog:@"AutoAnswer"
+                           message:[NSString stringWithFormat:@"[Decision]incoming sessionId=%ld, "
+                                                              @"existsAudio=%d, existsVideo=%d, "
+                                                              @"idleLineIndex=%d, header=%@, shouldAutoAnswer=%@",
+                                                              sessionId, existsAudio, existsVideo, index,
+                                                              headerHasDecision ? normHeader : @"<none>",
+                                                              shouldAutoAnswer ? @"YES" : @"NO"]];
     // 统一占用线路，避免自动接听分支与非自动接听分支不一致
     _lineSessions[index] = sessionId;
+    [_sessionVideoFlags setObject:[NSNumber numberWithBool:existsVideo] forKey:[NSNumber numberWithLong:sessionId]];
 
     // 仅在注册成功时尝试自动接听，否则保留为手动接听
     if (shouldAutoAnswer && regStatus == 2) {
@@ -751,6 +763,7 @@
     }
     [[QuanYuSocket shared] saveLog:@"FreeLine"
                            message:[NSString stringWithFormat:@"onInviteFailure free sessionId=%ld", sessionId]];
+    [_sessionVideoFlags removeObjectForKey:[NSNumber numberWithLong:sessionId]];
 }
 
 - (void)onInviteRinging:(long)sessionId
@@ -803,6 +816,7 @@
                                            @"videoCodecs=%s, audio=%d, video=%d",
                                            sessionId, audioCodecs ? audioCodecs : "null",
                                            videoCodecs ? videoCodecs : "null", existsAudio, existsVideo]];
+    [_sessionVideoFlags setObject:[NSNumber numberWithBool:existsVideo] forKey:[NSNumber numberWithLong:sessionId]];
 }
 
 - (void)onPlayAudioFileFinished:(long)sessionId fileName:(char *)fileName {

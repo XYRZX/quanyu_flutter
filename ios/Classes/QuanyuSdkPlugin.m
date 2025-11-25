@@ -127,23 +127,16 @@
 - (void)refreshNotification:(NSNotification *)aNotification {
     NSDictionary *info = [aNotification userInfo];
     if ([[info objectForKey:@"netSatus"] isEqualToString:@"有网"]) {
-
-        // 上线
-        NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
-
-        // 注销之前旧的
-        //        [[PortSIPManager shared] unRegister];
-
-        // 设置PortSIPManager的代理和用户信息
-        [PortSIPManager shared].userInfo = userDict;
-
-        // 执行软电话注册
-        [[PortSIPManager shared] onLine];
-
-        // 重连
+        if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+            [[PortSIPManager shared] refreshRegister];
+            [[PortSIPManager shared] attemptUpdateCall];
+        } else {
+            NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
+            [PortSIPManager shared].userInfo = userDict;
+            [[PortSIPManager shared] refreshRegister];
+        }
         [[QuanYuSocket shared] reStarConnectServer];
     } else if ([[info objectForKey:@"netSatus"] isEqualToString:@"无网"]) {
-
         [self sendEventToFlutter:@{
             @"event" : @"soft_phone_registration_status",
             @"data" : @{
@@ -153,11 +146,11 @@
                 @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
             }
         }];
-
-        // 下线
-        [[PortSIPManager shared] offLine];
-
-        //        [[PortSIPManager shared] unRegister];
+        if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+            [PortSIPManager shared].unregisterWhenCallEnds = YES;
+        } else {
+            [[PortSIPManager shared] unRegister];
+        }
     }
 }
 
@@ -255,6 +248,9 @@
 
         // 执行登出操作
         [[QuanYuSocket shared] logout];
+
+        // 挂机
+        [[PortSIPManager shared] hangUp];
 
         // 下线
         [[PortSIPManager shared] offLine];
@@ -852,6 +848,14 @@
 - (void)onConnected {
     NSLog(@"连接成功[onConnected]");
     [self sendEventToFlutter:@{@"event" : @"onConnected"}];
+    NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
+    [PortSIPManager shared].userInfo = userDict;
+    if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+        [[PortSIPManager shared] refreshRegister];
+        [[PortSIPManager shared] attemptUpdateCall];
+    } else {
+        [[PortSIPManager shared] refreshRegister];
+    }
 }
 
 /**

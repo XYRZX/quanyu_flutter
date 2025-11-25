@@ -54,7 +54,7 @@ class QuanyuSdk {
       required String code,
       required String extPhone,
       bool busy = false,
-      bool force = false}) async {
+      bool? force}) async {
     final result = await QuanyuSdkPlatform.instance.login(
         loginUrl: loginUrl,
         appKey: appKey,
