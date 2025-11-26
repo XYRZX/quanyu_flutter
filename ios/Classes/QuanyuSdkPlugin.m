@@ -736,11 +736,12 @@
     }
 
     if ([[dic allKeys] containsObject:@"opcode"] &&
-        [[dic objectForKey:@"opcode"] isEqualToString:@"C_LogoutIPPhoneOk"]) {
+        [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
         [self sendEventToFlutter:@{
             @"event" : @"code_kicked",
-            @"data" : @{@"type" : @(2), @"deviceName" : @"", @"message" : @"当前账号已被强制登录"}
+            @"data" : @{@"type" : @(2), @"deviceName" : [dic objectForKey:@"device_name"], @"message" : @"当前账号已被强制登录"}
         }];
+        
         [[PortSIPManager shared] unRegister];
         [[PortSIPManager shared] offLine];
         [[QuanYuSocket shared] setupKeepAlive:NO];

@@ -333,9 +333,9 @@ class _LoginPageState extends State<LoginPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('登录冲突'),
+          title: const Text('强制登录'),
           content:
-              Text('当前账号已被${deviceName.isNotEmpty ? deviceName : '其他设备'}登录'),
+              Text('当前账号已被${deviceName.isNotEmpty ? deviceName : '其他设备'}强制登录'),
           actions: [
             TextButton(
               onPressed: () {
