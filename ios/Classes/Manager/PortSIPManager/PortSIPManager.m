@@ -34,6 +34,8 @@
 
 @property(nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *sessionVideoFlags;
 
+@property(nonatomic, strong) NSTimer *phoneRefreshTimer;
+
 @end
 
 @implementation PortSIPManager
