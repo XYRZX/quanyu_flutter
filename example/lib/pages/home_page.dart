@@ -293,8 +293,18 @@ class _HomePageState extends State<HomePage> {
   Future<void> _applyInitialBusyFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final busy = prefs.getBool('login_busy') ?? false;
-      if (busy) {
+      final int? agentState = prefs.getInt('agent_state');
+      final bool busyFlag = prefs.getBool('login_busy') ?? false;
+
+      if (agentState == 29) {
+        await _sendSetRestOpcode();
+        if (mounted) {
+          setState(() {
+            _agentState = 29;
+            _dropDownText = _fullAgentStateMap[29] ?? '小休';
+          });
+        }
+      } else if (agentState == 2 || (agentState == null && busyFlag)) {
         await _sendSetBusyOpcode();
         if (mounted) {
           setState(() {
@@ -311,9 +321,10 @@ class _HomePageState extends State<HomePage> {
           });
         }
       }
+
       _updateAvailableStates();
     } catch (e) {
-      debugPrint('应用初始置忙状态失败: $e');
+      debugPrint('应用初始坐席状态失败: $e');
     }
   }
 
@@ -636,6 +647,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('login_busy', true);
+      await prefs.setInt('agent_state', 2);
     } catch (_) {}
   }
 
@@ -647,6 +659,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('login_busy', false);
+      await prefs.setInt('agent_state', 1);
     } catch (_) {}
   }
 
@@ -658,6 +671,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('login_busy', false);
+      await prefs.setInt('agent_state', 29);
     } catch (_) {}
   }
 

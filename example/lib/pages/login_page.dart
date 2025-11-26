@@ -278,6 +278,11 @@ class _LoginPageState extends State<LoginPage> {
         if (_isBusyEnabled) {
           await QuanyuSdk()
               .sendRequestWithMessage(message: '{"opcode": "C_SetBusy"}');
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('login_busy', true);
+            await prefs.setInt('agent_state', 2);
+          } catch (_) {}
         }
         _updateLoginState(LoginState.success);
         _showSuccessMessage(result['message'] ?? '登录成功');
