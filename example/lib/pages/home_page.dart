@@ -1102,15 +1102,15 @@ class _HomePageState extends State<HomePage> {
           ),
           // 坐席状态下拉菜单
           GestureDetector(
-            onTap: _showStateSelectionDialog,
+            onTap: _isSoftPhoneOnline ? _showStateSelectionDialog : null,
             child: Row(
               children: [
                 Text(
-                  (!(_isSoftPhoneOnline && _agentState == 1) &&
-                          _dropDownText == "空闲")
-                      ? "离线"
-                      : _dropDownText,
-                  style: const TextStyle(fontSize: 14),
+                  _isSoftPhoneOnline ? _dropDownText : "离线",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _isSoftPhoneOnline ? null : Colors.red,
+                  ),
                 ),
                 const Icon(Icons.arrow_drop_down),
               ],
@@ -1154,8 +1154,8 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 10),
             _buildStatusRow('软电话状态', _softPhoneStatus, _isSoftPhoneOnline),
-            _buildStatusRow(
-                '坐席状态', _dropDownText, _isSoftPhoneOnline && _agentState == 1),
+            _buildStatusRow('坐席状态', _isSoftPhoneOnline ? _dropDownText : '离线',
+                _isSoftPhoneOnline && _agentState == 1),
           ],
         ),
       ),
