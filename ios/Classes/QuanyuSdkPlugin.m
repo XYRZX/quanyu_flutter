@@ -24,6 +24,8 @@
 
 @property(nonatomic, strong) NSMutableArray<NSDictionary *> *eventBuffer; // 事件缓冲队列
 
+@property(nonatomic, copy) NSString *lastNetStatus;
+
 @end
 
 @implementation QuanyuSdkPlugin
@@ -126,19 +128,28 @@
 #pragma mark - 监听网络
 - (void)refreshNotification:(NSNotification *)aNotification {
     NSDictionary *info = [aNotification userInfo];
-    if ([[info objectForKey:@"netSatus"] isEqualToString:@"有网"]) {
+    NSString *netStatus = [info objectForKey:@"netSatus"];
+    if (![netStatus isKindOfClass:[NSString class]]) {
+        return;
+    }
+    if (self.lastNetStatus && [self.lastNetStatus isEqualToString:netStatus]) {
+        return;
+    }
+    self.lastNetStatus = netStatus;
+    if ([netStatus isEqualToString:@"有网"]) {
         if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
             // 有通话的情况
             [[PortSIPManager shared] refreshRegister];
             [[PortSIPManager shared] attemptUpdateCall];
         } else {
-            // 无通话的情况，不要去注册了，
-//            NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
-//            [PortSIPManager shared].userInfo = userDict;
-//            [[PortSIPManager shared] refreshRegister];
+            
+            NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
+            [PortSIPManager shared].userInfo = userDict;
+            [[PortSIPManager shared] refreshRegister];
         }
-//        [[QuanYuSocket shared] reStarConnectServer];
-    } else if ([[info objectForKey:@"netSatus"] isEqualToString:@"无网"]) {
+
+        [[QuanYuSocket shared] reStarConnectServer];
+    } else if ([netStatus isEqualToString:@"无网"]) {
         [self sendEventToFlutter:@{
             @"event" : @"soft_phone_registration_status",
             @"data" : @{
@@ -153,7 +164,7 @@
         } else {
             [[PortSIPManager shared] unRegister];
         }
-        [[QuanYuSocket shared] logout];
+//        [[QuanYuSocket shared] logout];
     }
 }
 
@@ -788,7 +799,7 @@
             }];
 
             //        [[QuanYuSocket shared] logout];
-            [[QuanYuSocket shared] reStarConnectServer];
+            //            [[QuanYuSocket shared] reStarConnectServer];
         } else {
             // 在线
             [self sendEventToFlutter:@{
