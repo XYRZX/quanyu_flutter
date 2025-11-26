@@ -114,5 +114,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - iOS Podspec 版本为 0.0.12。
 - 加自动接听的日志
 
+## [0.0.16] - 2025-11-26
+### Changed
+- Flutter 插件版本升级到 0.0.16。
+- iOS Podspec 版本为 0.0.16。
+- 多项优化
+
 ### Notes
 - 无破坏性变更；版本同步更新。

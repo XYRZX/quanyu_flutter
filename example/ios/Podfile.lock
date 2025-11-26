@@ -1,6 +1,6 @@
 PODS:
   - Flutter (1.0.0)
-  - quanyu_sdk (0.0.15):
+  - quanyu_sdk (0.0.16):
     - Flutter
   - Reachability (3.7.6)
   - shared_preferences_foundation (0.0.1):
