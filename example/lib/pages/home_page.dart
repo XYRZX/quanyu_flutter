@@ -157,11 +157,14 @@ class _HomePageState extends State<HomePage> {
     // 根据iOS逻辑判断状态是否可用
     switch (stateName) {
       case '置忙':
-        return currentCode == 1 || currentCode == 29; // 空闲或小休时可以置忙
+        // 只要收到软电话状态事件，置忙始终可点击
+        return true;
       case '置闲':
-        return currentCode == 2 || currentCode == 29; // 置忙或小休时可以置闲
+        // 只要收到软电话状态事件，置闲始终可点击
+        return true;
       case '小休':
-        return currentCode == 1 || currentCode == 2; // 空闲或置忙时可以小休
+        // 仅在空闲或置忙状态下允许小休
+        return currentCode == 1 || currentCode == 2;
       default:
         return false;
     }
@@ -292,35 +295,55 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _applyInitialBusyFromPrefs() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final int? agentState = prefs.getInt('agent_state');
-      final bool busyFlag = prefs.getBool('login_busy') ?? false;
+      // final prefs = await SharedPreferences.getInstance();
+      // final int? agentState = prefs.getInt('agent_state');
+      // final bool busyFlag = prefs.getBool('login_busy') ?? false;
 
-      if (agentState == 29) {
-        await _sendSetRestOpcode();
-        if (mounted) {
-          setState(() {
-            _agentState = 29;
-            _dropDownText = _fullAgentStateMap[29] ?? '小休';
-          });
-        }
-      } else if (agentState == 2 || (agentState == null && busyFlag)) {
-        await _sendSetBusyOpcode();
-        if (mounted) {
-          setState(() {
-            _agentState = 2;
-            _dropDownText = _fullAgentStateMap[2] ?? '置忙中';
-          });
-        }
+      // 如果已经从事件中获取到当前坐席状态，且不是空闲/置忙/小休，则不覆盖为置闲
+      int currentCode = 0;
+      if (_savedMessageDic != null && _savedMessageDic!.containsKey('state')) {
+        final dynamic s = _savedMessageDic!['state'];
+        if (s is int) currentCode = s;
+        if (s is num) currentCode = s.toInt();
       } else {
-        await _sendSetFreeOpcode();
-        if (mounted) {
-          setState(() {
-            _agentState = 1;
-            _dropDownText = _fullAgentStateMap[1] ?? '空闲';
-          });
-        }
+        currentCode = _agentState;
       }
+
+      if (currentCode != 0 &&
+          currentCode != 1 &&
+          currentCode != 2 &&
+          currentCode != 29) {
+        debugPrint('检测到当前坐席状态($currentCode)，跳过初始化状态应用');
+        _updateAvailableStates();
+        return;
+      }
+
+      // if (agentState == 29) {
+      //   await _sendSetRestOpcode();
+      //   if (mounted) {
+      //     setState(() {
+      //       _agentState = 29;
+      //       _dropDownText = _fullAgentStateMap[29] ?? '小休';
+      //     });
+      //   }
+      // } else if (agentState == 2 || (agentState == null && busyFlag)) {
+      //   await _sendSetBusyOpcode();
+      //   if (mounted) {
+      //     setState(() {
+      //       _agentState = 2;
+      //       _dropDownText = _fullAgentStateMap[2] ?? '置忙中';
+      //     });
+      //   }
+      // }
+      // else {
+      //   await _sendSetFreeOpcode();
+      //   if (mounted) {
+      //     setState(() {
+      //       _agentState = 1;
+      //       _dropDownText = _fullAgentStateMap[1] ?? '空闲';
+      //     });
+      //   }
+      // }
 
       _updateAvailableStates();
     } catch (e) {
@@ -1116,11 +1139,13 @@ class _HomePageState extends State<HomePage> {
           ),
           // 坐席状态下拉菜单
           GestureDetector(
-            onTap: _isSoftPhoneOnline ? _showStateSelectionDialog : null,
+            onTap: (_savedMessageDic != null || _isSoftPhoneOnline)
+                ? _showStateSelectionDialog
+                : null,
             child: Row(
               children: [
                 Text(
-                  _isSoftPhoneOnline ? _dropDownText : "离线",
+                  _dropDownText,
                   style: TextStyle(
                     fontSize: 14,
                     color: _isSoftPhoneOnline ? null : Colors.red,

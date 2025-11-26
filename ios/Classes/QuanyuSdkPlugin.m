@@ -128,14 +128,16 @@
     NSDictionary *info = [aNotification userInfo];
     if ([[info objectForKey:@"netSatus"] isEqualToString:@"有网"]) {
         if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+            // 有通话的情况
             [[PortSIPManager shared] refreshRegister];
             [[PortSIPManager shared] attemptUpdateCall];
         } else {
-            NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
-            [PortSIPManager shared].userInfo = userDict;
-            [[PortSIPManager shared] refreshRegister];
+            // 无通话的情况，不要去注册了，
+//            NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
+//            [PortSIPManager shared].userInfo = userDict;
+//            [[PortSIPManager shared] refreshRegister];
         }
-        [[QuanYuSocket shared] reStarConnectServer];
+//        [[QuanYuSocket shared] reStarConnectServer];
     } else if ([[info objectForKey:@"netSatus"] isEqualToString:@"无网"]) {
         [self sendEventToFlutter:@{
             @"event" : @"soft_phone_registration_status",
@@ -151,6 +153,7 @@
         } else {
             [[PortSIPManager shared] unRegister];
         }
+        [[QuanYuSocket shared] logout];
     }
 }
 

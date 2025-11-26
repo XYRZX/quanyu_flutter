@@ -92,8 +92,6 @@
 // 上线
 - (void)onLine {
 
-    [[QuanYuSocket shared] saveLog:@"selfPhone" message:@"注册软电话"];
-
     if (!_userInfo) {
         NSLog(@"没有用户数据");
         return;
@@ -102,6 +100,8 @@
     if (_sipInitialized) {
         [self offLine];
     }
+
+    [[QuanYuSocket shared] saveLog:@"RegisterServer" message:@"注册软电话"];
 
     NSString *authName = [_userInfo objectForKey:@"name"];
     NSString *userName = [_userInfo objectForKey:@"extphone"];
@@ -372,19 +372,12 @@
     NSLog(@"startPhoneRefreshTimer: inCall=%@, activeSessionId=%ld, "
           @"sipRegistrationStatus=%d",
           inCall ? @"YES" : @"NO", _activeSessionId, _sipRegistrationStatus);
+
+    [[QuanYuSocket shared] saveLog:@"startPhoneRefreshTimer" message:@"执行中"];
     if (inCall) {
-        //        [[QuanYuSocket shared]
-        //            saveLog:@"startPhoneRefreshTimer"
-        //            message:[NSString
-        //                        stringWithFormat:@"inCall
-        //                        refreshRegister+attemptUpdateCall sessionId=%ld",
-        //                        _activeSessionId]];
         [self refreshRegister];
         [self attemptUpdateCall];
     } else {
-        //        [[QuanYuSocket shared] saveLog:@"startPhoneRefreshTimer"
-        //        message:@"idle refreshRegister"];
-
         [self refreshRegister];
     }
 }
@@ -413,7 +406,7 @@
         [_portSIPSDK refreshRegistration:0];
 
         if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
-            [self.delegate pushAppLogToWeb:@"Refresh" info:@"Refresh Registration..."];
+            [self.delegate pushAppLogToWeb:@"RefreshRegistration" info:@"Refresh Registration..."];
         }
     } else if (_sipRegistrationStatus == 3) { // 3 - 注册失败/已注销
         [self onLine];
