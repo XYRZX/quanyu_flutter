@@ -251,6 +251,7 @@
 
         // 挂机
         [[PortSIPManager shared] hangUp];
+        [[PortSIPManager shared] stopPhoneRefreshTimer];
 
         // 下线
         [[PortSIPManager shared] offLine];
@@ -733,19 +734,35 @@
             @"event" : @"code_kicked",
             @"data" : @{@"type" : @(type), @"deviceName" : deviceName ?: @"", @"message" : msg}
         }];
-    }
 
-    if ([[dic allKeys] containsObject:@"opcode"] &&
-        [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
-        [self sendEventToFlutter:@{
-            @"event" : @"code_kicked",
-            @"data" : @{@"type" : @(2), @"deviceName" : [dic objectForKey:@"device_name"], @"message" : @"当前账号已被强制登录"}
-        }];
-        
+        [[PortSIPManager shared] hangUp];
         [[PortSIPManager shared] unRegister];
         [[PortSIPManager shared] offLine];
         [[QuanYuSocket shared] setupKeepAlive:NO];
         [[QuanYuSocket shared] logout];
+    }
+
+    if ([[dic allKeys] containsObject:@"opcode"] && [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
+        [self sendEventToFlutter:@{
+            @"event" : @"code_kicked",
+            @"data" : @{
+                @"type" : @(2),
+                @"deviceName" : [dic objectForKey:@"device_name"],
+                @"message" : @"当前账号已被强制登录"
+            }
+        }];
+
+        [[PortSIPManager shared] hangUp];
+        [[PortSIPManager shared] unRegister];
+        [[PortSIPManager shared] offLine];
+
+        [[QuanYuSocket shared] sendRequestWithMessage:@"{\"opcode\": \"C_LogoutIPPhoneOk\",\"token\": \"\"}"];
+
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+          [[QuanYuSocket shared] setupKeepAlive:NO];
+          [[QuanYuSocket shared] logout];
+        });
+
     } else if ([[dic allKeys] containsObject:@"opcode"] &&
                [[dic objectForKey:@"opcode"] isEqualToString:@"S_RefreshRegistration"]) {
 
@@ -882,8 +899,19 @@
         [PortSIPManager shared].unregisterWhenCallEnds = YES;
     }
 
+    [PortSIPManager shared].socketConnected = NO;
     [self
         sendEventToFlutter:@{@"event" : @"onDisconnected", @"data" : @{@"code" : @(code), @"reason" : reason ?: @""}}];
+
+    [self sendEventToFlutter:@{
+        @"event" : @"soft_phone_registration_status",
+        @"data" : @{
+            @"status" : @"offline",
+            @"code" : @(0),
+            @"message" : @"软电话离线",
+            @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+        }
+    }];
 }
 
 /**
@@ -896,6 +924,7 @@
 - (void)onConnectFailedWithCode:(int)code WithReason:(NSString *)reason {
     // 对reason参数进行null检查，提供默认值
     NSString *safeReason = reason ?: @"未知错误";
+    [PortSIPManager shared].socketConnected = NO;
 
     NSLog(@"WebSocket连接失败回调[onConnectFailed]: 状态码 %d, 原因: %@", code, safeReason);
 
@@ -904,6 +933,16 @@
         message:[NSString stringWithFormat:@"断开[onConnectFailedWithCode]: 状态码 %d, 原因: %@", code, reason]];
 
     [self sendEventToFlutter:@{@"event" : @"onConnectFailed", @"data" : @{@"code" : @(code), @"reason" : safeReason}}];
+
+    [self sendEventToFlutter:@{
+        @"event" : @"soft_phone_registration_status",
+        @"data" : @{
+            @"status" : @"offline",
+            @"code" : @(0),
+            @"message" : @"软电话离线",
+            @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+        }
+    }];
 }
 
 #pragma mark - PortSIPManagerDelegate

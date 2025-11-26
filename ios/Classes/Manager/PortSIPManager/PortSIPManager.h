@@ -118,6 +118,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)attemptUpdateCall;
 
+// 软电话，定时刷新
+- (void)startPhoneRefreshTimer;
+
+// 软电话，关闭定时刷新
+- (void)stopPhoneRefreshTimer;
+
+@property(nonatomic, assign) BOOL socketConnected;
+
 @end
 
 NS_ASSUME_NONNULL_END

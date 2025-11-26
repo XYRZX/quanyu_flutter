@@ -291,6 +291,7 @@
     if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
         [self.delegate pushAppLogToWeb:@"register" info:@"正在连接软电话"];
     }
+    [self startPhoneRefreshTimer];
 }
 
 // 下线
@@ -306,6 +307,10 @@
     }
 
     _sipRegistrationStatus = 0;
+
+    // 关闭定时器
+    [self stopPhoneRefreshTimer];
+
     // 清理会话状态，避免残留导致后续来电线路耗尽或错接
     _activeSessionId = INVALID_SESSION_ID;
     for (int i = 0; i < MAX_LINES; i++) {
@@ -335,14 +340,53 @@
         return;
     }
     int ret = -1;
-    SEL sel0 = NSSelectorFromString(@"updateCall:enableAudio:enableVideo:");
-    BOOL enableAudio = YES;
-    BOOL enableVideo = NO;
 
     [_portSIPSDK updateCall:_activeSessionId enableAudio:YES enableVideo:NO];
 
     [[QuanYuSocket shared] saveLog:@"updateCall"
                            message:[NSString stringWithFormat:@"sessionId=%ld, ret=%d", _activeSessionId, ret]];
+}
+
+- (void)startPhoneRefreshTimer {
+    if (_phoneRefreshTimer) {
+        [_phoneRefreshTimer invalidate];
+        _phoneRefreshTimer = nil;
+    }
+    _phoneRefreshTimer = [NSTimer scheduledTimerWithTimeInterval:10.0
+                                                          target:self
+                                                        selector:@selector(onPhoneRefreshTimer)
+                                                        userInfo:nil
+                                                         repeats:YES];
+}
+
+- (void)stopPhoneRefreshTimer {
+    if (_phoneRefreshTimer) {
+        [_phoneRefreshTimer invalidate];
+        _phoneRefreshTimer = nil;
+    }
+}
+
+- (void)onPhoneRefreshTimer {
+    [[QuanYuSocket shared] saveLog:@"startPhoneRefreshTimer" message:@"执行中"];
+    BOOL inCall = (_activeSessionId != INVALID_SESSION_ID);
+    NSLog(@"startPhoneRefreshTimer: inCall=%@, activeSessionId=%ld, "
+          @"sipRegistrationStatus=%d",
+          inCall ? @"YES" : @"NO", _activeSessionId, _sipRegistrationStatus);
+    if (inCall) {
+        //        [[QuanYuSocket shared]
+        //            saveLog:@"startPhoneRefreshTimer"
+        //            message:[NSString
+        //                        stringWithFormat:@"inCall
+        //                        refreshRegister+attemptUpdateCall sessionId=%ld",
+        //                        _activeSessionId]];
+        [self refreshRegister];
+        [self attemptUpdateCall];
+    } else {
+        //        [[QuanYuSocket shared] saveLog:@"startPhoneRefreshTimer"
+        //        message:@"idle refreshRegister"];
+
+        [self refreshRegister];
+    }
 }
 
 // 喇叭扩音
@@ -514,7 +558,6 @@
     if (self.unregisterWhenCallEnds) {
         [self unRegister];
         self.unregisterWhenCallEnds = NO;
-        [self onLine];
     }
     [_sessionVideoFlags removeObjectForKey:[NSNumber numberWithLong:sessionId]];
 }
