@@ -142,7 +142,7 @@
             [[PortSIPManager shared] refreshRegister];
             [[PortSIPManager shared] attemptUpdateCall];
         } else {
-            
+
             NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
             [PortSIPManager shared].userInfo = userDict;
             [[PortSIPManager shared] refreshRegister];
@@ -164,7 +164,6 @@
         } else {
             [[PortSIPManager shared] unRegister];
         }
-//        [[QuanYuSocket shared] logout];
     }
 }
 
@@ -188,6 +187,7 @@
         NSString *extPhone = call.arguments[@"extPhone"];
         BOOL busy = [call.arguments[@"busy"] boolValue];
         BOOL force = [call.arguments[@"force"] boolValue];
+        [[NSUserDefaults standardUserDefaults] setBool:force forKey:@"QuanYu_force_login"];
 
         // 参数验证
         if (!loginUrl || loginUrl.length == 0) {
@@ -229,6 +229,7 @@
                                 result(@{@"success" : @YES, @"message" : @"登录成功"});
                             } else {
                                 [[NSNotificationCenter defaultCenter] removeObserver:self];
+                                [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"QuanYu_force_login"];
                                 // 登录失败,返回失败信息
                                 result(@{@"success" : @NO, @"message" : errorMessage});
 
@@ -262,6 +263,7 @@
 
         // 执行登出操作
         [[QuanYuSocket shared] logout];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"QuanYu_force_login"];
 
         // 挂机
         [[PortSIPManager shared] hangUp];
@@ -327,16 +329,23 @@
         // 设置PortSIPManager的代理和用户信息
         [PortSIPManager shared].userInfo = userDict;
 
-        // 执行软电话注册
-        [[PortSIPManager shared] onLine];
-
-        // 向Flutter发送注册开始事件
-        [self sendEventToFlutter:@{
-            @"event" : @"soft_phone_register_started",
-            @"data" : @{@"message" : @"软电话注册已开始", @"extphone" : extphone}
-        }];
-
-        result(@{@"success" : @YES, @"message" : @"软电话注册已开始"});
+        BOOL forceLogin = [[NSUserDefaults standardUserDefaults] boolForKey:@"QuanYu_force_login"];
+        void (^registerBlock)(void) = ^{
+          [[PortSIPManager shared] onLine];
+          [self sendEventToFlutter:@{
+              @"event" : @"soft_phone_register_started",
+              @"data" : @{@"message" : @"软电话注册已开始", @"extphone" : extphone}
+          }];
+          [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"QuanYu_force_login"];
+          result(@{@"success" : @YES, @"message" : @"软电话注册已开始"});
+        };
+        if (forceLogin) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+              registerBlock();
+            });
+        } else {
+            registerBlock();
+        }
 
     } @catch (NSException *exception) {
         result([FlutterError errorWithCode:@"REGISTER_SOFT_PHONE_EXCEPTION"
