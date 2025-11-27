@@ -423,9 +423,20 @@ class _HomePageState extends State<HomePage> {
         : typeDyn is num
             ? typeDyn.toInt()
             : 0;
+    final String deviceName = (data?['deviceName'] ?? '') as String;
+
+    if (type == 1) {
+      _showOtherDeviceLoggingDialog(deviceName);
+      return;
+    }
 
     if (type == 2) {
-      _showForcedLoginDialog();
+      _showForcedLoginDialog(deviceName);
+      return;
+    }
+
+    if (type == 3) {
+      _showSeatLimitDialog();
       return;
     }
 
@@ -961,14 +972,60 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _showForcedLoginDialog() {
+  void _showForcedLoginDialog(String deviceName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('强制登录'),
+          content:
+              Text('当前设备被${deviceName.isNotEmpty ? deviceName : '其他设备'}登录了'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logoutAndReturnToLogin();
+              },
+              child: const Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showOtherDeviceLoggingDialog(String deviceName) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('提示'),
-          content: const Text('被其他设备强制登录'),
+          content: Text(
+              '当前账号正在哪一台设备上面登录：${deviceName.isNotEmpty ? deviceName : '其他设备'}'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logoutAndReturnToLogin();
+              },
+              child: const Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSeatLimitDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('提示'),
+          content: const Text('授权坐席超限'),
           actions: [
             TextButton(
               onPressed: () {

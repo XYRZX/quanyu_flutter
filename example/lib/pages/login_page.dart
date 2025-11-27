@@ -92,6 +92,13 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    if (type == 2) {
+      _clearLoginStatus();
+      _updateLoginState(LoginState.idle);
+      _showForcedLoginDialog(deviceName);
+      return;
+    }
+
     if (type == 3) {
       _clearLoginStatus();
       _updateLoginState(LoginState.idle);
@@ -338,9 +345,9 @@ class _LoginPageState extends State<LoginPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('强制登录'),
-          content:
-              Text('当前账号已被${deviceName.isNotEmpty ? deviceName : '其他设备'}强制登录'),
+          title: const Text('提示'),
+          content: Text(
+              '当前账号正在哪一台设备上面登录：${deviceName.isNotEmpty ? deviceName : '其他设备'}'),
           actions: [
             TextButton(
               onPressed: () {
@@ -362,6 +369,28 @@ class _LoginPageState extends State<LoginPage> {
         return AlertDialog(
           title: const Text('提示'),
           content: const Text('授权坐席超限'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showForcedLoginDialog(String deviceName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('强制登录'),
+          content:
+              Text('当前设备被${deviceName.isNotEmpty ? deviceName : '其他设备'}登录了'),
           actions: [
             TextButton(
               onPressed: () {
