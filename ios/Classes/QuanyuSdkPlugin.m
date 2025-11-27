@@ -794,29 +794,25 @@
 
     if ([[dic allKeys] containsObject:@"registerState"]) {
         int code = [[dic objectForKey:@"registerState"] intValue];
-        if ([PortSIPManager shared].sipRegistrationStatus == 0 || [PortSIPManager shared].sipRegistrationStatus == 3 ||
-            code == 0) {
-            // 离线
-            [self sendEventToFlutter:@{
-                @"event" : @"soft_phone_registration_status",
-                @"data" : @{
-                    @"status" : @"offline",
-                    @"code" : @(code),
-                    @"message" : @"软电话离线",
-                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
-                }
-            }];
-
-            //        [[QuanYuSocket shared] logout];
-            //            [[QuanYuSocket shared] reStarConnectServer];
-        } else {
-            // 在线
+        BOOL sipOnline = ([PortSIPManager shared].sipRegistrationStatus == 2);
+        BOOL online = sipOnline || (code != 0);
+        if (online) {
             [self sendEventToFlutter:@{
                 @"event" : @"soft_phone_registration_status",
                 @"data" : @{
                     @"status" : @"online",
                     @"code" : @(code),
                     @"message" : @"在线",
+                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                }
+            }];
+        } else {
+            [self sendEventToFlutter:@{
+                @"event" : @"soft_phone_registration_status",
+                @"data" : @{
+                    @"status" : @"offline",
+                    @"code" : @(code),
+                    @"message" : @"软电话离线",
                     @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
                 }
             }];
@@ -828,15 +824,28 @@
         int code = [[dic objectForKey:@"state"] intValue];
 
         if (code == 0) {
-            [self sendEventToFlutter:@{
-                @"event" : @"soft_phone_registration_status",
-                @"data" : @{
-                    @"status" : @"offline",
-                    @"code" : @(code),
-                    @"message" : @"未连接",
-                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
-                }
-            }];
+            BOOL sipOnline = ([PortSIPManager shared].sipRegistrationStatus == 2);
+            if (sipOnline) {
+                [self sendEventToFlutter:@{
+                    @"event" : @"soft_phone_registration_status",
+                    @"data" : @{
+                        @"status" : @"online",
+                        @"code" : @(code),
+                        @"message" : @"在线",
+                        @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                    }
+                }];
+            } else {
+                [self sendEventToFlutter:@{
+                    @"event" : @"soft_phone_registration_status",
+                    @"data" : @{
+                        @"status" : @"offline",
+                        @"code" : @(code),
+                        @"message" : @"未连接",
+                        @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                    }
+                }];
+            }
         } else if (code == 999) {
             [self sendEventToFlutter:@{
                 @"event" : @"soft_phone_registration_status",

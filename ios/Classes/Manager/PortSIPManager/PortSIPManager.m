@@ -329,6 +329,9 @@
 
 // 挂机
 - (void)hangUp {
+    if (!_sipInitialized) {
+        return;
+    }
     if (_activeSessionId != INVALID_SESSION_ID) {
         [_portSIPSDK hangUp:_activeSessionId];
     }
@@ -440,6 +443,7 @@
 
         [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:@"注销软电话"];
         [_portSIPSDK unInitialize];
+        _sipInitialized = NO;
 
         _sipRegistrationStatus = 3;
     }
