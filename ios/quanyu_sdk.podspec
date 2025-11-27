@@ -20,32 +20,26 @@ A Flutter SDK for integrating with native iOS SDKs.
 
   s.dependency 'Flutter'
 
-  vendored = []
+  quan_yu_path = File.join(__dir__, 'Frameworks', 'QuanYu.xcframework')
+  portsip_path = File.join(__dir__, 'Frameworks', 'PortSIPVoIPSDK.framework')
 
-  # QuanYu via CocoaPods by default; use local xcframework if present
-  if File.directory?(File.join(__dir__, 'Frameworks', 'QuanYu.xcframework'))
-    vendored << 'Frameworks/QuanYu.xcframework'
-  else
-    s.dependency 'QuanYu', '>= 1.0.16'
+  unless File.directory?(quan_yu_path)
+    puts "ERROR: QuanYu.xcframework not found!"
+    puts "Please place QuanYu.xcframework at: #{File.expand_path(quan_yu_path)}"
+    raise "Missing required framework: QuanYu.xcframework"
   end
 
-  # PortSIPVoIPSDK: REQUIRED to be placed locally in Frameworks directory
-  # Users must contact customer service to obtain this framework
-  portsip_framework_path = File.join(__dir__, 'Frameworks', 'PortSIPVoIPSDK.framework')
-  if File.directory?(portsip_framework_path)
-    vendored << 'Frameworks/PortSIPVoIPSDK.framework'
-  else
-    # This will cause an error during pod install, which is intentional
-    # Users need to place PortSIPVoIPSDK.framework in the correct location
+  unless File.directory?(portsip_path)
     puts "ERROR: PortSIPVoIPSDK.framework not found!"
     puts "Please contact customer service to obtain PortSIPVoIPSDK.framework"
-    puts "and place it in: #{File.expand_path(portsip_framework_path)}"
+    puts "and place it at: #{File.expand_path(portsip_path)}"
     raise "Missing required framework: PortSIPVoIPSDK.framework"
   end
 
-  unless vendored.empty?
-    s.vendored_frameworks = vendored
-  end
+  s.vendored_frameworks = [
+    'Frameworks/QuanYu.xcframework',
+    'Frameworks/PortSIPVoIPSDK.framework'
+  ]
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = {

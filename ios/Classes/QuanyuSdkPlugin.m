@@ -462,12 +462,13 @@
 
             // 执行
             [[PortSIPManager shared] setVoiceNum:volume.intValue];
-        } else {
-
-            result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                       message:@"activeSessionId为空，暂时不能设置喇叭音量"
-                                       details:nil]);
         }
+//        else {
+//
+//            result([FlutterError errorWithCode:@"INVALID_PARAMS"
+//                                       message:@"activeSessionId为空，暂时不能设置喇叭音量"
+//                                       details:nil]);
+//        }
 
         result(nil);
     } @catch (NSException *exception) {
@@ -490,12 +491,13 @@
 
             // 执行
             [[PortSIPManager shared] setMicrophone:volume.intValue];
-        } else {
-
-            result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                       message:@"activeSessionId为空，暂时不能设置麦克风音量"
-                                       details:nil]);
         }
+//        else {
+//
+//            result([FlutterError errorWithCode:@"INVALID_PARAMS"
+//                                       message:@"activeSessionId为空，暂时不能设置麦克风音量"
+//                                       details:nil]);
+//        }
 
         result(nil);
     } @catch (NSException *exception) {
