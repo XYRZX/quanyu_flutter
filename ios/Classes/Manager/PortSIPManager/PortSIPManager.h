@@ -63,6 +63,8 @@ NS_ASSUME_NONNULL_BEGIN
 // 调用JS
 - (void)CallJSWithJSonStr:(NSString *)JSStr;
 
+- (void)onSipForbidden403;
+
 @end
 
 @interface PortSIPManager : NSObject

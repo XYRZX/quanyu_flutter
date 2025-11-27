@@ -419,18 +419,15 @@
 // 403强制重新注册处理
 // 收到服务端403（Forbidden）时，通常表示鉴权失败或会话异常，这里通过下线并重新上线来重置会话并重新发起注册
 - (void)forceReRegisterAfterForbidden {
-    // 记录日志，便于定位问题
     if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
         [self.delegate pushAppLogToWeb:@"403 Forbidden" info:@"收到403，触发强制重新注册"];
     }
-
-    // 如果当前SIP已初始化，先下线释放SDK状态，避免残留状态影响后续注册
     if (_sipInitialized) {
         [self offLine];
     }
-
-    // 重新上线（内部会执行initialize、setUser、registerServer等流程）
-    [self onLine];
+    if ([self.delegate respondsToSelector:@selector(onSipForbidden403)]) {
+        [self.delegate onSipForbidden403];
+    }
 }
 
 // 从SIP代理服务器注销。
