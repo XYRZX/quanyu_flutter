@@ -413,6 +413,23 @@
     }
 }
 
+// 403强制重新注册处理
+// 收到服务端403（Forbidden）时，通常表示鉴权失败或会话异常，这里通过下线并重新上线来重置会话并重新发起注册
+- (void)forceReRegisterAfterForbidden {
+    // 记录日志，便于定位问题
+    if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
+        [self.delegate pushAppLogToWeb:@"403 Forbidden" info:@"收到403，触发强制重新注册"];
+    }
+
+    // 如果当前SIP已初始化，先下线释放SDK状态，避免残留状态影响后续注册
+    if (_sipInitialized) {
+        [self offLine];
+    }
+
+    // 重新上线（内部会执行initialize、setUser、registerServer等流程）
+    [self onLine];
+}
+
 // 从SIP代理服务器注销。
 - (void)unRegister {
     if (_sipRegistrationStatus == 1 || _sipRegistrationStatus == 2) {
@@ -514,6 +531,25 @@
         _autoRegisterTimer = [NSTimer scheduledTimerWithTimeInterval:interval
                                                               target:self
                                                             selector:@selector(refreshRegister)
+                                                            userInfo:nil
+                                                             repeats:NO];
+    } else if (statusCode == 403) {
+        // 收到403：不走通用重试，改为下线并重新注册
+        // 1. 停止已有自动重试定时器，避免重复触发
+        if (_autoRegisterTimer) {
+            [_autoRegisterTimer invalidate];
+            _autoRegisterTimer = nil;
+        }
+
+        // 2. 使用较温和的退避重试间隔，避免频繁触发（最短3秒，最长30秒）
+        int interval = _autoRegisterRetryTimes * 2 + 3;
+        interval = interval > 30 ? 30 : interval;
+        ++_autoRegisterRetryTimes;
+
+        // 3. 定时触发强制重新注册流程
+        _autoRegisterTimer = [NSTimer scheduledTimerWithTimeInterval:interval
+                                                              target:self
+                                                            selector:@selector(forceReRegisterAfterForbidden)
                                                             userInfo:nil
                                                              repeats:NO];
     }
