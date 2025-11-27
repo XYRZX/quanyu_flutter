@@ -14,18 +14,15 @@
 #import "AccountManager.h"
 #import "NSString+QY.h"
 
-@interface QuanyuSdkPlugin () <FlutterStreamHandler, QuanYuSocketDelegate,
-                               PortSIPManagerDelegate>
+@interface QuanyuSdkPlugin () <FlutterStreamHandler, QuanYuSocketDelegate, PortSIPManagerDelegate>
 
-@property(nonatomic, copy)
-    FlutterEventSink eventSink; // 事件流处理器，用于向Flutter发送实时事件
+@property(nonatomic, copy) FlutterEventSink eventSink; // 事件流处理器，用于向Flutter发送实时事件
 
 @property(nonatomic, assign) BOOL isRegisterSoftPhone; // 是否正在注册
 
 @property(nonatomic, strong) NSMutableDictionary *infoDic;
 
-@property(nonatomic, strong)
-    NSMutableArray<NSDictionary *> *eventBuffer; // 事件缓冲队列
+@property(nonatomic, strong) NSMutableArray<NSDictionary *> *eventBuffer; // 事件缓冲队列
 
 @property(nonatomic, copy) NSString *lastNetStatus;
 
@@ -40,44 +37,42 @@
  * @param registrar Flutter插件注册器，提供与Flutter引擎通信的能力
  */
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
-  // 创建方法通道，用于处理Flutter调用的方法
-  FlutterMethodChannel *channel =
-      [FlutterMethodChannel methodChannelWithName:@"quanyu_sdk"
-                                  binaryMessenger:[registrar messenger]];
+    // 创建方法通道，用于处理Flutter调用的方法
+    FlutterMethodChannel *channel = [FlutterMethodChannel methodChannelWithName:@"quanyu_sdk"
+                                                                binaryMessenger:[registrar messenger]];
 
-  // 创建插件实例
-  QuanyuSdkPlugin *instance = [[QuanyuSdkPlugin alloc] init];
+    // 创建插件实例
+    QuanyuSdkPlugin *instance = [[QuanyuSdkPlugin alloc] init];
 
-  // 注册方法调用处理器
-  [registrar addMethodCallDelegate:instance channel:channel];
+    // 注册方法调用处理器
+    [registrar addMethodCallDelegate:instance channel:channel];
 
-  // 创建事件通道，用于向Flutter发送实时事件
-  FlutterEventChannel *eventChannel =
-      [FlutterEventChannel eventChannelWithName:@"quanyu_sdk_events"
-                                binaryMessenger:[registrar messenger]];
-  [eventChannel setStreamHandler:instance];
+    // 创建事件通道，用于向Flutter发送实时事件
+    FlutterEventChannel *eventChannel = [FlutterEventChannel eventChannelWithName:@"quanyu_sdk_events"
+                                                                  binaryMessenger:[registrar messenger]];
+    [eventChannel setStreamHandler:instance];
 
-  // 设置QuanYu SDK的代理，接收SDK回调事件
-  [QuanYuSocket shared].delegate = instance;
+    // 设置QuanYu SDK的代理，接收SDK回调事件
+    [QuanYuSocket shared].delegate = instance;
 
-  [QuanYuSocket shared].connectionRecoveryMaxInterval = 10;
+    [QuanYuSocket shared].connectionRecoveryMaxInterval = 10;
 
-  // 设置PortSIPManager的代理，接收软电话相关回调
-  [PortSIPManager shared].delegate = instance;
+    // 设置PortSIPManager的代理，接收软电话相关回调
+    [PortSIPManager shared].delegate = instance;
 
-  // 请求麦克风权限
-  [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio
-                           completionHandler:^(BOOL granted) {
-                             dispatch_async(dispatch_get_main_queue(), ^{
-                               if (granted) {
-                                 NSLog(@"麦克风权限已获取");
-                                 // 可选：显示成功提示
-                               } else {
-                                 NSLog(@"用户拒绝了权限");
-                                 // 可选：引导用户去设置页开启
-                               }
-                             });
-                           }];
+    // 请求麦克风权限
+    [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio
+                             completionHandler:^(BOOL granted) {
+                               dispatch_async(dispatch_get_main_queue(), ^{
+                                 if (granted) {
+                                     NSLog(@"麦克风权限已获取");
+                                     // 可选：显示成功提示
+                                 } else {
+                                     NSLog(@"用户拒绝了权限");
+                                     // 可选：引导用户去设置页开启
+                                 }
+                               });
+                             }];
 }
 
 /**
@@ -87,102 +82,89 @@
  * @param call Flutter方法调用对象，包含方法名和参数
  * @param result 结果回调，用于向Flutter返回处理结果
  */
-- (void)handleMethodCall:(FlutterMethodCall *)call
-                  result:(nonnull FlutterResult)result {
-  if ([@"login" isEqualToString:call.method]) { // 登录
-    [self handleLogin:call result:result];
-  } else if ([@"logout" isEqualToString:call.method]) { // 退出登录
-    [self handleLogout:call result:result];
-  } else if ([@"registerSoftPhone" isEqualToString:call.method]) { // 注册软电话
-    [self handleRegisterSoftPhone:call result:result];
-  } else if ([@"reregisterSoftPhone"
-                 isEqualToString:call.method]) { // 重新注册分机
-    [self handleReregisterSoftPhone:call result:result];
-  } else if ([@"setChannelOutputVolumeScaling"
-                 isEqualToString:call.method]) { // 设置外放声音
-    [self handleSetChannelOutputVolumeScaling:call result:result];
-  } else if ([@"setChannelInputVolumeScaling"
-                 isEqualToString:call.method]) { // 设置麦克风声音
-    [self handleSetChannelInputVolumeScaling:call result:result];
-  } else if ([@"setKeepAlive" isEqualToString:call.method]) { // 设置常驻
-    [self handleSetKeepAlive:call result:result];
-  } else if ([@"setSpeakerOn" isEqualToString:call.method]) { // 是否免提
-    [self handleSetSpeakerOn:call result:result];
-  } else if ([@"getSpeakerEnabled"
-                 isEqualToString:call.method]) { // 获取是否免提
-    [self handleGetSpeakerEnabled:call result:result];
-  } else if ([@"sendRequestWithMessage"
-                 isEqualToString:call.method]) { // 发送命令
-    [self handleSendRequestWithMessage:call result:result];
-  } else if ([@"setHeartbeatInterval"
-                 isEqualToString:call.method]) { // 设置心跳间隔
-    [self handleSetHeartbeatInterval:call result:result];
-  } else if ([@"setConnectionRecoveryMaxInterval"
-                 isEqualToString:call.method]) { // 设置连接恢复最大间隔
-    [self handleSetConnectionRecoveryMaxInterval:call result:result];
-  } else if ([@"setConnectionRecoveryMinInterval"
-                 isEqualToString:call.method]) { // 设置连接恢复最小间隔
-    [self handleSetConnectionRecoveryMinInterval:call result:result];
-  } else if ([@"setAutoAnswerCall"
-                 isEqualToString:call.method]) { // 设置自动接听
-    [self handleSetAutoAnswerCall:call result:result];
-  } else if ([@"clientAnswer" isEqualToString:call.method]) { // 客户端接听
-    [self handleClientAnswer:call result:result];
-  } else if ([@"hangup" isEqualToString:call.method]) { // 挂断电话
-    [self handleHangup:call result:result];
-  } else if ([@"setLogEnabled" isEqualToString:call.method]) { // 设置日志开关
-    [self handleSetLogEnabled:call result:result];
-  } else if ([@"getLogEnabled"
-                 isEqualToString:call.method]) { // 获取日志开关状态
-    [self handleGetLogEnabled:call result:result];
-  } else {
-    // 未实现的方法
-    result(FlutterMethodNotImplemented);
-  }
+- (void)handleMethodCall:(FlutterMethodCall *)call result:(nonnull FlutterResult)result {
+    if ([@"login" isEqualToString:call.method]) { // 登录
+        [self handleLogin:call result:result];
+    } else if ([@"logout" isEqualToString:call.method]) { // 退出登录
+        [self handleLogout:call result:result];
+    } else if ([@"registerSoftPhone" isEqualToString:call.method]) { // 注册软电话
+        [self handleRegisterSoftPhone:call result:result];
+    } else if ([@"reregisterSoftPhone" isEqualToString:call.method]) { // 重新注册分机
+        [self handleReregisterSoftPhone:call result:result];
+    } else if ([@"setChannelOutputVolumeScaling" isEqualToString:call.method]) { // 设置外放声音
+        [self handleSetChannelOutputVolumeScaling:call result:result];
+    } else if ([@"setChannelInputVolumeScaling" isEqualToString:call.method]) { // 设置麦克风声音
+        [self handleSetChannelInputVolumeScaling:call result:result];
+    } else if ([@"setKeepAlive" isEqualToString:call.method]) { // 设置常驻
+        [self handleSetKeepAlive:call result:result];
+    } else if ([@"setSpeakerOn" isEqualToString:call.method]) { // 是否免提
+        [self handleSetSpeakerOn:call result:result];
+    } else if ([@"getSpeakerEnabled" isEqualToString:call.method]) { // 获取是否免提
+        [self handleGetSpeakerEnabled:call result:result];
+    } else if ([@"sendRequestWithMessage" isEqualToString:call.method]) { // 发送命令
+        [self handleSendRequestWithMessage:call result:result];
+    } else if ([@"setHeartbeatInterval" isEqualToString:call.method]) { // 设置心跳间隔
+        [self handleSetHeartbeatInterval:call result:result];
+    } else if ([@"setConnectionRecoveryMaxInterval" isEqualToString:call.method]) { // 设置连接恢复最大间隔
+        [self handleSetConnectionRecoveryMaxInterval:call result:result];
+    } else if ([@"setConnectionRecoveryMinInterval" isEqualToString:call.method]) { // 设置连接恢复最小间隔
+        [self handleSetConnectionRecoveryMinInterval:call result:result];
+    } else if ([@"setAutoAnswerCall" isEqualToString:call.method]) { // 设置自动接听
+        [self handleSetAutoAnswerCall:call result:result];
+    } else if ([@"clientAnswer" isEqualToString:call.method]) { // 客户端接听
+        [self handleClientAnswer:call result:result];
+    } else if ([@"hangup" isEqualToString:call.method]) { // 挂断电话
+        [self handleHangup:call result:result];
+    } else if ([@"setLogEnabled" isEqualToString:call.method]) { // 设置日志开关
+        [self handleSetLogEnabled:call result:result];
+    } else if ([@"getLogEnabled" isEqualToString:call.method]) { // 获取日志开关状态
+        [self handleGetLogEnabled:call result:result];
+    } else {
+        // 未实现的方法
+        result(FlutterMethodNotImplemented);
+    }
 }
 
 #pragma mark - 监听网络
 - (void)refreshNotification:(NSNotification *)aNotification {
-  NSDictionary *info = [aNotification userInfo];
-  NSString *netStatus = [info objectForKey:@"netSatus"];
-  if (![netStatus isKindOfClass:[NSString class]]) {
-    return;
-  }
-  if (self.lastNetStatus && [self.lastNetStatus isEqualToString:netStatus]) {
-    return;
-  }
-  self.lastNetStatus = netStatus;
-  if ([netStatus isEqualToString:@"有网"]) {
-    if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
-      // 有通话的情况
-      [[PortSIPManager shared] refreshRegister];
-      [[PortSIPManager shared] attemptUpdateCall];
-    } else {
-
-      NSDictionary *userDict = [[NSUserDefaults standardUserDefaults]
-          objectForKey:@"QuanYu_websocket_user"];
-      [PortSIPManager shared].userInfo = userDict;
-      [[PortSIPManager shared] refreshRegister];
+    NSDictionary *info = [aNotification userInfo];
+    NSString *netStatus = [info objectForKey:@"netSatus"];
+    if (![netStatus isKindOfClass:[NSString class]]) {
+        return;
     }
-
-    [[QuanYuSocket shared] reStarConnectServer];
-  } else if ([netStatus isEqualToString:@"无网"]) {
-    [self sendEventToFlutter:@{
-      @"event" : @"soft_phone_registration_status",
-      @"data" : @{
-        @"status" : @"offline",
-        @"code" : @(0),
-        @"message" : @"软电话离线",
-        @"sipRegistrationStatus" :
-            @([PortSIPManager shared].sipRegistrationStatus)
-      }
-    }];
-    if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
-      [PortSIPManager shared].unregisterWhenCallEnds = YES;
-    } else {
-      [[PortSIPManager shared] unRegister];
+    if (self.lastNetStatus && [self.lastNetStatus isEqualToString:netStatus]) {
+        return;
     }
-  }
+    self.lastNetStatus = netStatus;
+    if ([netStatus isEqualToString:@"有网"]) {
+        if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+            // 有通话的情况
+            [[PortSIPManager shared] refreshRegister];
+            [[PortSIPManager shared] attemptUpdateCall];
+        } else {
+
+            NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
+            [PortSIPManager shared].userInfo = userDict;
+            [[PortSIPManager shared] refreshRegister];
+        }
+
+        [[QuanYuSocket shared] reStarConnectServer];
+    } else if ([netStatus isEqualToString:@"无网"]) {
+        [self sendEventToFlutter:@{
+            @"event" : @"soft_phone_registration_status",
+            @"data" : @{
+                @"status" : @"offline",
+                @"code" : @(0),
+                @"message" : @"软电话离线",
+                @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+            }
+        }];
+        if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+            [PortSIPManager shared].unregisterWhenCallEnds = YES;
+        } else {
+            [[PortSIPManager shared] unRegister];
+        }
+    }
 }
 
 #pragma mark - 方法处理器
@@ -195,86 +177,72 @@
  * @param result 结果回调
  */
 - (void)handleLogin:(FlutterMethodCall *)call result:(FlutterResult)result {
-  @try {
-    // 获取登录参数
-    NSString *loginUrl = call.arguments[@"loginUrl"];
-    NSString *appKey = call.arguments[@"appKey"];
-    NSString *secretKey = call.arguments[@"secretKey"];
-    NSString *gid = call.arguments[@"gid"];
-    NSString *code = call.arguments[@"code"];
-    NSString *extPhone = call.arguments[@"extPhone"];
-    BOOL busy = [call.arguments[@"busy"] boolValue];
-    BOOL force = [call.arguments[@"force"] boolValue];
-    [[NSUserDefaults standardUserDefaults] setBool:force
-                                            forKey:@"QuanYu_force_login"];
+    @try {
+        // 获取登录参数
+        NSString *loginUrl = call.arguments[@"loginUrl"];
+        NSString *appKey = call.arguments[@"appKey"];
+        NSString *secretKey = call.arguments[@"secretKey"];
+        NSString *gid = call.arguments[@"gid"];
+        NSString *code = call.arguments[@"code"];
+        NSString *extPhone = call.arguments[@"extPhone"];
+        BOOL busy = [call.arguments[@"busy"] boolValue];
+        BOOL force = [call.arguments[@"force"] boolValue];
+        [[NSUserDefaults standardUserDefaults] setBool:force forKey:@"QuanYu_force_login"];
 
-    // 参数验证
-    if (!loginUrl || loginUrl.length == 0) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"登录URL不能为空"
-                                 details:nil]);
-      return;
+        // 参数验证
+        if (!loginUrl || loginUrl.length == 0) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"登录URL不能为空" details:nil]);
+            return;
+        }
+
+        if (!appKey || appKey.length == 0) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"AppKey不能为空" details:nil]);
+            return;
+        }
+
+        if (!secretKey || secretKey.length == 0) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"SecretKey不能为空" details:nil]);
+            return;
+        }
+
+        QuanYuLoginModel *model = [[QuanYuLoginModel alloc] init];
+        model.domain = loginUrl;
+        model.gid = gid;
+        model.code = code;
+        model.extPhone = extPhone;
+        model.appKey = appKey;
+        model.secretKey = secretKey;
+        if (busy) {
+            model.freeState = @"busy";
+        }
+
+        // 先连接WebSocket
+        [[QuanYuSocket shared]
+                 login:model
+                 force:force
+            completion:^(BOOL success, NSString *_Nonnull errorMessage) {
+              if (success) {
+                  [[NSNotificationCenter defaultCenter] removeObserver:self name:@"internetChange" object:nil];
+                  [[NSNotificationCenter defaultCenter] addObserver:self
+                                                           selector:@selector(refreshNotification:)
+                                                               name:@"internetChange"
+                                                             object:nil];
+                  result(@{@"success" : @YES, @"message" : @"登录成功"});
+              } else {
+                  [[NSNotificationCenter defaultCenter] removeObserver:self];
+                  [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"QuanYu_force_login"];
+                  result(@{@"success" : @NO, @"message" : errorMessage});
+
+                  [[QuanYuSocket shared] saveLog:@"Service-portSip-ECoreErrorNone"
+                                         message:[NSString stringWithFormat:@"Service-portSip-ECoreErrorNone"]];
+              }
+            }];
+
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"LOGIN_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"登录过程中发生异常: %@", exception.reason]
+                                   details:nil]);
     }
-
-    if (!appKey || appKey.length == 0) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"AppKey不能为空"
-                                 details:nil]);
-      return;
-    }
-
-    if (!secretKey || secretKey.length == 0) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"SecretKey不能为空"
-                                 details:nil]);
-      return;
-    }
-
-    QuanYuLoginModel *model = [[QuanYuLoginModel alloc] init];
-    model.domain = loginUrl;
-    model.gid = gid;
-    model.code = code;
-    model.extPhone = extPhone;
-    model.appKey = appKey;
-    model.secretKey = secretKey;
-    if (busy) {
-      model.freeState = @"busy";
-    }
-
-    // 先连接WebSocket
-    [[QuanYuSocket shared]
-             login:model
-             force:force
-        completion:^(BOOL success, NSString *_Nonnull errorMessage) {
-          if (success) {
-            [[NSNotificationCenter defaultCenter]
-                addObserver:self
-                   selector:@selector(refreshNotification:)
-                       name:@"internetChange"
-                     object:nil];
-            // 登录成功,返回成功信息
-            result(@{@"success" : @YES, @"message" : @"登录成功"});
-          } else {
-            [[NSNotificationCenter defaultCenter] removeObserver:self];
-            [[NSUserDefaults standardUserDefaults]
-                removeObjectForKey:@"QuanYu_force_login"];
-            // 登录失败,返回失败信息
-            result(@{@"success" : @NO, @"message" : errorMessage});
-
-            [[QuanYuSocket shared]
-                saveLog:@"Service-portSip-ECoreErrorNone"
-                message:[NSString stringWithFormat:
-                                      @"Service-portSip-ECoreErrorNone"]];
-          }
-        }];
-
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"LOGIN_EXCEPTION"
-              message:[NSString stringWithFormat:@"登录过程中发生异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
 }
 
 /**
@@ -285,42 +253,36 @@
  * @param result 结果回调
  */
 - (void)handleLogout:(FlutterMethodCall *)call result:(FlutterResult)result {
-  @try {
-    // 取消网络监听
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    @try {
+        // 取消网络监听
+        [[NSNotificationCenter defaultCenter] removeObserver:self];
 
-    // 取消自动接听
-    [[AccountManager sharedAccountManager] setAutoAnswerCall:NO];
+        // 取消自动接听
+        [[AccountManager sharedAccountManager] setAutoAnswerCall:NO];
 
-    // 执行登出操作
-    [[QuanYuSocket shared] logout];
-    [[NSUserDefaults standardUserDefaults]
-        removeObjectForKey:@"QuanYu_force_login"];
+        // 执行登出操作
+        [[QuanYuSocket shared] logout];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"QuanYu_force_login"];
 
-    // 挂机
-    [[PortSIPManager shared] hangUp];
-    [[PortSIPManager shared] stopPhoneRefreshTimer];
+        // 挂机
+        [[PortSIPManager shared] hangUp];
+        [[PortSIPManager shared] stopPhoneRefreshTimer];
 
-    // 下线
-    [[PortSIPManager shared] offLine];
+        // 下线
+        [[PortSIPManager shared] offLine];
 
-    // 关闭保活
-    [[QuanYuSocket shared] setupKeepAlive:NO];
+        // 关闭保活
+        [[QuanYuSocket shared] setupKeepAlive:NO];
 
-    // 向Flutter发送登出成功事件
-    [self sendEventToFlutter:@{
-      @"event" : @"logout_success",
-      @"data" : @{@"message" : @"登出成功"}
-    }];
+        // 向Flutter发送登出成功事件
+        [self sendEventToFlutter:@{@"event" : @"logout_success", @"data" : @{@"message" : @"登出成功"}}];
 
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"LOGOUT_EXCEPTION"
-              message:[NSString stringWithFormat:@"登出过程中发生异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"LOGOUT_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"登出过程中发生异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 /**
@@ -330,82 +292,65 @@
  * @param call Flutter方法调用对象
  * @param result 结果回调
  */
-- (void)handleRegisterSoftPhone:(FlutterMethodCall *)call
-                         result:(FlutterResult)result {
-  @try {
-    // 从本地存储获取用户信息字典
-    NSDictionary *userDict = [[NSUserDefaults standardUserDefaults]
-        objectForKey:@"QuanYu_websocket_user"];
+- (void)handleRegisterSoftPhone:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        // 从本地存储获取用户信息字典
+        NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
 
-    if (!userDict) {
-      result([FlutterError errorWithCode:@"NO_USER_INFO"
-                                 message:@"未找到本地用户信息，请先登录"
-                                 details:nil]);
-      return;
-    }
+        if (!userDict) {
+            result([FlutterError errorWithCode:@"NO_USER_INFO" message:@"未找到本地用户信息，请先登录" details:nil]);
+            return;
+        }
 
-    // 验证必要的软电话信息是否存在
-    NSString *extphone = userDict[@"extphone"];
-    NSString *extphonePassword = userDict[@"extphonePassword"];
-    NSString *sipServerIPPort = userDict[@"sipServerIPPort"];
+        // 验证必要的软电话信息是否存在
+        NSString *extphone = userDict[@"extphone"];
+        NSString *extphonePassword = userDict[@"extphonePassword"];
+        NSString *sipServerIPPort = userDict[@"sipServerIPPort"];
 
-    if (!extphone || extphone.length == 0) {
-      result([FlutterError errorWithCode:@"INVALID_USER_INFO"
-                                 message:@"分机号码不能为空"
-                                 details:nil]);
-      return;
-    }
+        if (!extphone || extphone.length == 0) {
+            result([FlutterError errorWithCode:@"INVALID_USER_INFO" message:@"分机号码不能为空" details:nil]);
+            return;
+        }
 
-    if (!extphonePassword || extphonePassword.length == 0) {
-      result([FlutterError errorWithCode:@"INVALID_USER_INFO"
-                                 message:@"分机密码不能为空"
-                                 details:nil]);
-      return;
-    }
+        if (!extphonePassword || extphonePassword.length == 0) {
+            result([FlutterError errorWithCode:@"INVALID_USER_INFO" message:@"分机密码不能为空" details:nil]);
+            return;
+        }
 
-    if (!sipServerIPPort || sipServerIPPort.length == 0) {
-      result([FlutterError errorWithCode:@"INVALID_USER_INFO"
-                                 message:@"电话服务器IP不能为空"
-                                 details:nil]);
-      return;
-    }
+        if (!sipServerIPPort || sipServerIPPort.length == 0) {
+            result([FlutterError errorWithCode:@"INVALID_USER_INFO" message:@"电话服务器IP不能为空" details:nil]);
+            return;
+        }
 
-    // 注销之前旧的
-    [[PortSIPManager shared] unRegister];
+        // 注销之前旧的
+        [[PortSIPManager shared] unRegister];
 
-    // 设置PortSIPManager的代理和用户信息
-    [PortSIPManager shared].userInfo = userDict;
+        // 设置PortSIPManager的代理和用户信息
+        [PortSIPManager shared].userInfo = userDict;
 
-    BOOL forceLogin = [[NSUserDefaults standardUserDefaults]
-        boolForKey:@"QuanYu_force_login"];
-    void (^registerBlock)(void) = ^{
-      [[PortSIPManager shared] onLine];
-      [self sendEventToFlutter:@{
-        @"event" : @"soft_phone_register_started",
-        @"data" : @{@"message" : @"软电话注册已开始", @"extphone" : extphone}
-      }];
-      [[NSUserDefaults standardUserDefaults] setBool:NO
-                                              forKey:@"QuanYu_force_login"];
-      result(@{@"success" : @YES, @"message" : @"软电话注册已开始"});
-    };
-    if (forceLogin) {
-      dispatch_after(
-          dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)),
-          dispatch_get_main_queue(), ^{
+        BOOL forceLogin = [[NSUserDefaults standardUserDefaults] boolForKey:@"QuanYu_force_login"];
+        void (^registerBlock)(void) = ^{
+          [[PortSIPManager shared] onLine];
+          [self sendEventToFlutter:@{
+              @"event" : @"soft_phone_register_started",
+              @"data" : @{@"message" : @"软电话注册已开始", @"extphone" : extphone}
+          }];
+          [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"QuanYu_force_login"];
+          result(@{@"success" : @YES, @"message" : @"软电话注册已开始"});
+        };
+        if (forceLogin) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+              registerBlock();
+            });
+        } else {
             registerBlock();
-          });
-    } else {
-      registerBlock();
-    }
+        }
 
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"REGISTER_SOFT_PHONE_EXCEPTION"
-              message:[NSString
-                          stringWithFormat:@"注册软电话过程中发生异常: %@",
-                                           exception.reason]
-              details:nil]);
-  }
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"REGISTER_SOFT_PHONE_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"注册软电话过程中发生异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 /**
@@ -415,26 +360,23 @@
  * @param call Flutter方法调用对象
  * @param result 结果回调
  */
-- (void)handleReregisterSoftPhone:(FlutterMethodCall *)call
-                           result:(FlutterResult)result {
-  @try {
+- (void)handleReregisterSoftPhone:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
 
-    // 注销之前旧的
-    [[PortSIPManager shared] unRegister];
+        // 注销之前旧的
+        [[PortSIPManager shared] unRegister];
 
-    // 执行软电话注册
-    [[PortSIPManager shared] onLine];
+        // 执行软电话注册
+        [[PortSIPManager shared] onLine];
 
-    [[QuanYuSocket shared] reconnectAttempts];
+        [[QuanYuSocket shared] reconnectAttempts];
 
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"REREGISTER_SOFT_PHONE_EXCEPTION"
-              message:[NSString
-                          stringWithFormat:@"重新注册分机过程中发生异常: %@",
-                                           exception.reason]
-              details:nil]);
-  }
+    } @catch (NSException *exception) {
+        result([FlutterError
+            errorWithCode:@"REREGISTER_SOFT_PHONE_EXCEPTION"
+                  message:[NSString stringWithFormat:@"重新注册分机过程中发生异常: %@", exception.reason]
+                  details:nil]);
+    }
 }
 
 /**
@@ -444,42 +386,36 @@
  * @param call Flutter方法调用对象
  * @param result 结果回调
  */
-- (void)handleSendRequestWithMessage:(FlutterMethodCall *)call
-                              result:(FlutterResult)result {
-  @try {
-    NSString *message = call.arguments[@"message"];
+- (void)handleSendRequestWithMessage:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        NSString *message = call.arguments[@"message"];
 
-    if (!message || message.length == 0) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"消息内容不能为空"
-                                 details:nil]);
-      return;
-    }
-
-    if (message) {
-      NSDictionary *dic = [NSString dictionaryWithJsonString:message];
-      if ([dic isKindOfClass:[NSDictionary class]]) {
-        NSString *opcode = dic[@"opcode"];
-        if ([opcode isKindOfClass:[NSString class]] &&
-            ([opcode isEqualToString:@"C_Hangup"] ||
-             [opcode isEqualToString:@"C_Hangup"])) {
-          // 调用挂机方法时，需要把软电话也挂掉。（2_xxx的socket发送C_hangup消息或取消呼叫时
-          // 也调用sdk的挂机方法）
-          [[PortSIPManager shared] hangUp];
+        if (!message || message.length == 0) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"消息内容不能为空" details:nil]);
+            return;
         }
-      }
+
+        if (message) {
+            NSDictionary *dic = [NSString dictionaryWithJsonString:message];
+            if ([dic isKindOfClass:[NSDictionary class]]) {
+                NSString *opcode = dic[@"opcode"];
+                if ([opcode isKindOfClass:[NSString class]] &&
+                    ([opcode isEqualToString:@"C_Hangup"] || [opcode isEqualToString:@"C_Hangup"])) {
+                    // 调用挂机方法时，需要把软电话也挂掉。（2_xxx的socket发送C_hangup消息或取消呼叫时
+                    // 也调用sdk的挂机方法）
+                    [[PortSIPManager shared] hangUp];
+                }
+            }
+        }
+
+        [[QuanYuSocket shared] sendRequestWithMessage:message];
+
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SEND_MESSAGE_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"发送消息过程中发生异常: %@", exception.reason]
+                                   details:nil]);
     }
-
-    [[QuanYuSocket shared] sendRequestWithMessage:message];
-
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SEND_MESSAGE_EXCEPTION"
-              message:[NSString stringWithFormat:@"发送消息过程中发生异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
 }
 
 /**
@@ -489,23 +425,20 @@
  * @param call Flutter方法调用对象
  * @param result 结果回调
  */
-- (void)handleSetSpeakerOn:(FlutterMethodCall *)call
-                    result:(FlutterResult)result {
-  @try {
-    // 设置扬声器开关
-    BOOL enabled = [call.arguments[@"enabled"] boolValue];
+- (void)handleSetSpeakerOn:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        // 设置扬声器开关
+        BOOL enabled = [call.arguments[@"enabled"] boolValue];
 
-    // 执行
-    [[PortSIPManager shared] setSpeakerEnabled:enabled];
+        // 执行
+        [[PortSIPManager shared] setSpeakerEnabled:enabled];
 
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_SPEAKER_EXCEPTION"
-              message:[NSString stringWithFormat:@"设置扬声器时发生异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_SPEAKER_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置扬声器时发生异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 /**
@@ -515,73 +448,62 @@
  * @param call Flutter方法调用对象
  * @param result 结果回调
  */
-- (void)handleSetChannelOutputVolumeScaling:(FlutterMethodCall *)call
-                                     result:(FlutterResult)result {
-  @try {
-    // 设置音频输出音量（喇叭音量）
-    NSNumber *volume = call.arguments[@"volume"];
-    if (!volume) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"音量参数不能为空"
-                                 details:nil]);
-      return;
+- (void)handleSetChannelOutputVolumeScaling:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        // 设置音频输出音量（喇叭音量）
+        NSNumber *volume = call.arguments[@"volume"];
+        if (!volume) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"音量参数不能为空" details:nil]);
+            return;
+        }
+
+        if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+
+            // 执行
+            [[PortSIPManager shared] setVoiceNum:volume.intValue];
+        }
+        //        else {
+        //
+        //            result([FlutterError errorWithCode:@"INVALID_PARAMS"
+        //                                       message:@"activeSessionId为空，暂时不能设置喇叭音量"
+        //                                       details:nil]);
+        //        }
+
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_SPEAKER_VOLUME_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置喇叭音量时发生异常: %@", exception.reason]
+                                   details:nil]);
     }
-
-    if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
-
-      // 执行
-      [[PortSIPManager shared] setVoiceNum:volume.intValue];
-    }
-    //        else {
-    //
-    //            result([FlutterError errorWithCode:@"INVALID_PARAMS"
-    //                                       message:@"activeSessionId为空，暂时不能设置喇叭音量"
-    //                                       details:nil]);
-    //        }
-
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_SPEAKER_VOLUME_EXCEPTION"
-              message:[NSString stringWithFormat:@"设置喇叭音量时发生异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
 }
 
-- (void)handleSetChannelInputVolumeScaling:(FlutterMethodCall *)call
-                                    result:(FlutterResult)result {
-  @try {
-    // 设置音频输入音量（麦克风音量）
-    NSNumber *volume = call.arguments[@"volume"];
-    if (!volume) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"音量参数不能为空"
-                                 details:nil]);
-      return;
+- (void)handleSetChannelInputVolumeScaling:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        // 设置音频输入音量（麦克风音量）
+        NSNumber *volume = call.arguments[@"volume"];
+        if (!volume) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"音量参数不能为空" details:nil]);
+            return;
+        }
+
+        if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+
+            // 执行
+            [[PortSIPManager shared] setMicrophone:volume.intValue];
+        }
+        //        else {
+        //
+        //            result([FlutterError errorWithCode:@"INVALID_PARAMS"
+        //                                       message:@"activeSessionId为空，暂时不能设置麦克风音量"
+        //                                       details:nil]);
+        //        }
+
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_MICROPHONE_VOLUME_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置麦克风音量时发生异常: %@", exception.reason]
+                                   details:nil]);
     }
-
-    if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
-
-      // 执行
-      [[PortSIPManager shared] setMicrophone:volume.intValue];
-    }
-    //        else {
-    //
-    //            result([FlutterError errorWithCode:@"INVALID_PARAMS"
-    //                                       message:@"activeSessionId为空，暂时不能设置麦克风音量"
-    //                                       details:nil]);
-    //        }
-
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_MICROPHONE_VOLUME_EXCEPTION"
-              message:[NSString
-                          stringWithFormat:@"设置麦克风音量时发生异常: %@",
-                                           exception.reason]
-              details:nil]);
-  }
 }
 
 /**
@@ -591,32 +513,26 @@
  * @param call Flutter方法调用对象
  * @param result 结果回调
  */
-- (void)handleSetKeepAlive:(FlutterMethodCall *)call
-                    result:(FlutterResult)result {
-  @try {
-    // 获取保活开关参数
-    BOOL enabled = [call.arguments[@"enabled"] boolValue];
+- (void)handleSetKeepAlive:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        // 获取保活开关参数
+        BOOL enabled = [call.arguments[@"enabled"] boolValue];
 
-    // 调用QuanYu SDK的保活设置方法
-    [[QuanYuSocket shared] setupKeepAlive:enabled];
+        // 调用QuanYu SDK的保活设置方法
+        [[QuanYuSocket shared] setupKeepAlive:enabled];
 
-    // 向Flutter发送保活状态变更事件
-    [self sendEventToFlutter:@{
-      @"event" : @"keep_alive_changed",
-      @"data" : @{
-        @"enabled" : @(enabled),
-        @"message" : enabled ? @"保活已开启" : @"保活已关闭"
-      }
-    }];
+        // 向Flutter发送保活状态变更事件
+        [self sendEventToFlutter:@{
+            @"event" : @"keep_alive_changed",
+            @"data" : @{@"enabled" : @(enabled), @"message" : enabled ? @"保活已开启" : @"保活已关闭"}
+        }];
 
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_KEEP_ALIVE_EXCEPTION"
-              message:[NSString stringWithFormat:@"设置保活状态时发生异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_KEEP_ALIVE_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置保活状态时发生异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 #pragma mark - 辅助方法
@@ -624,189 +540,152 @@
 /**
  * 处理设置心跳间隔
  */
-- (void)handleSetHeartbeatInterval:(FlutterMethodCall *)call
-                            result:(FlutterResult)result {
-  @try {
-    NSNumber *heartbeatInterval = call.arguments[@"heartbeatInterval"];
+- (void)handleSetHeartbeatInterval:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        NSNumber *heartbeatInterval = call.arguments[@"heartbeatInterval"];
 
-    if (!heartbeatInterval) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"心跳间隔参数不能为空"
-                                 details:nil]);
-      return;
+        if (!heartbeatInterval) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"心跳间隔参数不能为空" details:nil]);
+            return;
+        }
+
+        [QuanYuSocket shared].heartbeatInterval = [heartbeatInterval intValue];
+
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_HEARTBEAT_INTERVAL_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置心跳间隔异常: %@", exception.reason]
+                                   details:nil]);
     }
-
-    [QuanYuSocket shared].heartbeatInterval = [heartbeatInterval intValue];
-
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_HEARTBEAT_INTERVAL_EXCEPTION"
-              message:[NSString stringWithFormat:@"设置心跳间隔异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
 }
 
 /**
  * 处理设置连接恢复最大间隔
  */
-- (void)handleSetConnectionRecoveryMaxInterval:(FlutterMethodCall *)call
-                                        result:(FlutterResult)result {
-  @try {
-    NSNumber *maxInterval = call.arguments[@"connectionRecoveryMaxInterval"];
+- (void)handleSetConnectionRecoveryMaxInterval:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        NSNumber *maxInterval = call.arguments[@"connectionRecoveryMaxInterval"];
 
-    if (!maxInterval) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"连接恢复最大间隔参数不能为空"
-                                 details:nil]);
-      return;
+        if (!maxInterval) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"连接恢复最大间隔参数不能为空" details:nil]);
+            return;
+        }
+
+        [QuanYuSocket shared].connectionRecoveryMaxInterval = [maxInterval intValue];
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_CONNECTION_RECOVERY_MAX_INTERVAL_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置连接恢复最大间隔异常: %@", exception.reason]
+                                   details:nil]);
     }
-
-    [QuanYuSocket shared].connectionRecoveryMaxInterval =
-        [maxInterval intValue];
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_CONNECTION_RECOVERY_MAX_INTERVAL_EXCEPTION"
-              message:[NSString
-                          stringWithFormat:@"设置连接恢复最大间隔异常: %@",
-                                           exception.reason]
-              details:nil]);
-  }
 }
 
 /**
  * 处理设置连接恢复最小间隔
  */
-- (void)handleSetConnectionRecoveryMinInterval:(FlutterMethodCall *)call
-                                        result:(FlutterResult)result {
-  @try {
-    NSNumber *minInterval = call.arguments[@"connectionRecoveryMinInterval"];
+- (void)handleSetConnectionRecoveryMinInterval:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        NSNumber *minInterval = call.arguments[@"connectionRecoveryMinInterval"];
 
-    if (!minInterval) {
-      result([FlutterError errorWithCode:@"INVALID_PARAMS"
-                                 message:@"连接恢复最小间隔参数不能为空"
-                                 details:nil]);
-      return;
+        if (!minInterval) {
+            result([FlutterError errorWithCode:@"INVALID_PARAMS" message:@"连接恢复最小间隔参数不能为空" details:nil]);
+            return;
+        }
+
+        [QuanYuSocket shared].connectionRecoveryMinInterval = [minInterval intValue];
+
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_CONNECTION_RECOVERY_MIN_INTERVAL_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置连接恢复最小间隔异常: %@", exception.reason]
+                                   details:nil]);
     }
-
-    [QuanYuSocket shared].connectionRecoveryMinInterval =
-        [minInterval intValue];
-
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_CONNECTION_RECOVERY_MIN_INTERVAL_EXCEPTION"
-              message:[NSString
-                          stringWithFormat:@"设置连接恢复最小间隔异常: %@",
-                                           exception.reason]
-              details:nil]);
-  }
 }
 
 /**
  * 处理设置自动接听
  */
-- (void)handleSetAutoAnswerCall:(FlutterMethodCall *)call
-                         result:(FlutterResult)result {
-  @try {
-    BOOL enabled = [call.arguments[@"enabled"] boolValue];
-    [[AccountManager sharedAccountManager] setAutoAnswerCall:enabled];
+- (void)handleSetAutoAnswerCall:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        BOOL enabled = [call.arguments[@"enabled"] boolValue];
+        [[AccountManager sharedAccountManager] setAutoAnswerCall:enabled];
 
-    [[QuanYuSocket shared]
-        saveLog:@"AutoAnswer"
-        message:[NSString stringWithFormat:@"setAutoAnswerCall enabled=%@",
-                                           enabled ? @"YES" : @"NO"]];
+        [[QuanYuSocket shared]
+            saveLog:@"AutoAnswer"
+            message:[NSString stringWithFormat:@"setAutoAnswerCall enabled=%@", enabled ? @"YES" : @"NO"]];
 
-    [self sendEventToFlutter:@{
-      @"event" : @"auto_answer_changed",
-      @"data" : @{@"enabled" : @(enabled)}
-    }];
+        [self sendEventToFlutter:@{@"event" : @"auto_answer_changed", @"data" : @{@"enabled" : @(enabled)}}];
 
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_AUTO_ANSWER_CALL_EXCEPTION"
-              message:[NSString stringWithFormat:@"设置自动接听异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_AUTO_ANSWER_CALL_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置自动接听异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 /**
  * 处理客户端接听
  */
-- (void)handleClientAnswer:(FlutterMethodCall *)call
-                    result:(FlutterResult)result {
-  @try {
+- (void)handleClientAnswer:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
 
-    [[QuanYuSocket shared] saveLog:@"clientAnswer" message:@"软电话接听"];
+        [[QuanYuSocket shared] saveLog:@"clientAnswer" message:@"软电话接听"];
 
-    [[PortSIPManager shared] answerCall];
+        [[PortSIPManager shared] answerCall];
 
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"CLIENT_ANSWER_EXCEPTION"
-              message:[NSString stringWithFormat:@"客户端接听异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"CLIENT_ANSWER_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"客户端接听异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 /**
  * 处理挂断电话
  */
 - (void)handleHangup:(FlutterMethodCall *)call result:(FlutterResult)result {
-  @try {
-    [[PortSIPManager shared] hungUpCall];
+    @try {
+        [[PortSIPManager shared] hungUpCall];
 
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"HANGUP_EXCEPTION"
-              message:[NSString stringWithFormat:@"挂断电话异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"HANGUP_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"挂断电话异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 /**
  * 处理设置日志开关
  */
-- (void)handleSetLogEnabled:(FlutterMethodCall *)call
-                     result:(FlutterResult)result {
-  @try {
-    BOOL enabled = [call.arguments[@"enabled"] boolValue];
+- (void)handleSetLogEnabled:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        BOOL enabled = [call.arguments[@"enabled"] boolValue];
 
-    [[QuanYuSocket shared] setLogEnabled:enabled];
+        [[QuanYuSocket shared] setLogEnabled:enabled];
 
-    result(nil);
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"SET_LOG_ENABLED_EXCEPTION"
-              message:[NSString stringWithFormat:@"设置日志开关异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
+        result(nil);
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"SET_LOG_ENABLED_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"设置日志开关异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 /**
  * 处理获取日志开关状态
  */
-- (void)handleGetLogEnabled:(FlutterMethodCall *)call
-                     result:(FlutterResult)result {
-  @try {
+- (void)handleGetLogEnabled:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
 
-    BOOL enabled = [[QuanYuSocket shared] isLogEnabled];
+        BOOL enabled = [[QuanYuSocket shared] isLogEnabled];
 
-    result(@(enabled));
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"GET_LOG_ENABLED_EXCEPTION"
-              message:[NSString stringWithFormat:@"获取日志开关状态异常: %@",
-                                                 exception.reason]
-              details:nil]);
-  }
+        result(@(enabled));
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"GET_LOG_ENABLED_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"获取日志开关状态异常: %@", exception.reason]
+                                   details:nil]);
+    }
 }
 
 /**
@@ -816,30 +695,30 @@
  * @param eventData 事件数据字典
  */
 - (void)sendEventToFlutter:(NSDictionary *)eventData {
-  // 统一事件键名为"event"（兼容旧的"type"）
-  NSMutableDictionary *normalized = [eventData mutableCopy];
-  if (!normalized[@"event"] && normalized[@"type"]) {
-    id typeVal = normalized[@"type"];
-    if ([typeVal isKindOfClass:[NSString class]]) {
-      normalized[@"event"] = typeVal;
+    // 统一事件键名为"event"（兼容旧的"type"）
+    NSMutableDictionary *normalized = [eventData mutableCopy];
+    if (!normalized[@"event"] && normalized[@"type"]) {
+        id typeVal = normalized[@"type"];
+        if ([typeVal isKindOfClass:[NSString class]]) {
+            normalized[@"event"] = typeVal;
+        }
     }
-  }
 
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if (self.eventSink) {
-      NSLog(@"sendEventToFlutter:%@", normalized);
-      self.eventSink([normalized copy]);
-    } else {
-      if (!self.eventBuffer) {
-        self.eventBuffer = [NSMutableArray array];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (self.eventSink) {
+          NSLog(@"sendEventToFlutter:%@", normalized);
+          self.eventSink([normalized copy]);
+      } else {
+          if (!self.eventBuffer) {
+              self.eventBuffer = [NSMutableArray array];
+          }
+          // 控制缓冲区最大50条
+          if (self.eventBuffer.count >= 50) {
+              [self.eventBuffer removeObjectAtIndex:0];
+          }
+          [self.eventBuffer addObject:[normalized copy]];
       }
-      // 控制缓冲区最大50条
-      if (self.eventBuffer.count >= 50) {
-        [self.eventBuffer removeObjectAtIndex:0];
-      }
-      [self.eventBuffer addObject:[normalized copy]];
-    }
-  });
+    });
 }
 
 #pragma mark - QuanYuSocketDelegate 协议实现
@@ -851,173 +730,153 @@
  * @param message 接收到的消息内容
  */
 - (void)onMessage:(NSString *)message {
-  NSLog(@"收到消息[onMessage]: %@", message);
-  [[QuanYuSocket shared] saveLog:@"websocket" message:message];
+    NSLog(@"收到消息[onMessage]: %@", message);
+    [[QuanYuSocket shared] saveLog:@"websocket" message:message];
 
-  NSDictionary *dic = [NSString dictionaryWithJsonString:message];
+    NSDictionary *dic = [NSString dictionaryWithJsonString:message];
 
-  // 坐席冲突事件处理：账号在其他设备登录/被强制登录/授权坐席超限
-  if ([[dic allKeys] containsObject:@"opcode"] &&
-      [[dic objectForKey:@"opcode"] isEqualToString:@"S_seatConflict"]) {
-    NSNumber *typeNum = dic[@"type"];
-    NSString *deviceName = dic[@"deviceName"];
-    int type = 0;
-    if ([typeNum respondsToSelector:@selector(intValue)]) {
-      type = [typeNum intValue];
+    // 坐席冲突事件处理：账号在其他设备登录/被强制登录/授权坐席超限
+    if ([[dic allKeys] containsObject:@"opcode"] && [[dic objectForKey:@"opcode"] isEqualToString:@"S_seatConflict"]) {
+        NSNumber *typeNum = dic[@"type"];
+        NSString *deviceName = dic[@"deviceName"];
+        int type = 0;
+        if ([typeNum respondsToSelector:@selector(intValue)]) {
+            type = [typeNum intValue];
+        }
+
+        NSString *msg = @"";
+        if (type == 1) {
+            msg = [NSString stringWithFormat:@"账号在其他设备登录%@%@",
+                                             (deviceName && deviceName.length > 0) ? @"：" : @"", deviceName ?: @""];
+        } else if (type == 2) {
+            msg = @"被其他设备强制登录";
+        } else if (type == 3) {
+            msg = @"授权坐席超限";
+        }
+
+        [self sendEventToFlutter:@{
+            @"event" : @"code_kicked",
+            @"data" : @{@"type" : @(type), @"deviceName" : deviceName ?: @"", @"message" : msg}
+        }];
+
+        [[PortSIPManager shared] hangUp];
+        [[PortSIPManager shared] unRegister];
+        [[PortSIPManager shared] offLine];
+        [[QuanYuSocket shared] setupKeepAlive:NO];
+        [[QuanYuSocket shared] logout];
     }
 
-    NSString *msg = @"";
-    if (type == 1) {
-      msg = [NSString
-          stringWithFormat:@"账号在其他设备登录%@%@",
-                           (deviceName && deviceName.length > 0) ? @"：" : @"",
-                           deviceName ?: @""];
-    } else if (type == 2) {
-      msg = @"被其他设备强制登录";
-    } else if (type == 3) {
-      msg = @"授权坐席超限";
-    }
+    if ([[dic allKeys] containsObject:@"opcode"] && [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
+        [self sendEventToFlutter:@{
+            @"event" : @"code_kicked",
+            @"data" : @{
+                @"type" : @(2),
+                @"deviceName" : [dic objectForKey:@"device_name"],
+                @"message" : @"当前账号已被强制登录"
+            }
+        }];
 
-    [self sendEventToFlutter:@{
-      @"event" : @"code_kicked",
-      @"data" : @{
-        @"type" : @(type),
-        @"deviceName" : deviceName ?: @"",
-        @"message" : msg
-      }
-    }];
+        [[PortSIPManager shared] hangUp];
+        [[PortSIPManager shared] unRegister];
+        [[PortSIPManager shared] offLine];
 
-    [[PortSIPManager shared] hangUp];
-    [[PortSIPManager shared] unRegister];
-    [[PortSIPManager shared] offLine];
-    [[QuanYuSocket shared] setupKeepAlive:NO];
-    [[QuanYuSocket shared] logout];
-  }
+        [[QuanYuSocket shared] sendRequestWithMessage:@"{\"opcode\": \"C_LogoutIPPhoneOk\",\"token\": \"\"}"];
 
-  if ([[dic allKeys] containsObject:@"opcode"] &&
-      [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
-    [self sendEventToFlutter:@{
-      @"event" : @"code_kicked",
-      @"data" : @{
-        @"type" : @(2),
-        @"deviceName" : [dic objectForKey:@"device_name"],
-        @"message" : @"当前账号已被强制登录"
-      }
-    }];
-
-    [[PortSIPManager shared] hangUp];
-    [[PortSIPManager shared] unRegister];
-    [[PortSIPManager shared] offLine];
-
-    [[QuanYuSocket shared]
-        sendRequestWithMessage:
-            @"{\"opcode\": \"C_LogoutIPPhoneOk\",\"token\": \"\"}"];
-
-    dispatch_after(
-        dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)),
-        dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
           [[QuanYuSocket shared] setupKeepAlive:NO];
           [[QuanYuSocket shared] logout];
         });
 
-  } else if ([[dic allKeys] containsObject:@"opcode"] &&
-             [[dic objectForKey:@"opcode"]
-                 isEqualToString:@"S_RefreshRegistration"]) {
-
-    [[PortSIPManager shared] refreshRegister];
-  }
-
-  if ([[dic allKeys] containsObject:@"registerState"]) {
-    int code = [[dic objectForKey:@"registerState"] intValue];
-    BOOL sipOnline = ([PortSIPManager shared].sipRegistrationStatus == 2);
-    BOOL online = sipOnline || (code != 0);
-    if (online) {
-      [self sendEventToFlutter:@{
-        @"event" : @"soft_phone_registration_status",
-        @"data" : @{
-          @"status" : @"online",
-          @"code" : @(code),
-          @"message" : @"在线",
-          @"sipRegistrationStatus" :
-              @([PortSIPManager shared].sipRegistrationStatus)
-        }
-      }];
-    } else {
-      [self sendEventToFlutter:@{
-        @"event" : @"soft_phone_registration_status",
-        @"data" : @{
-          @"status" : @"offline",
-          @"code" : @(code),
-          @"message" : @"软电话离线",
-          @"sipRegistrationStatus" :
-              @([PortSIPManager shared].sipRegistrationStatus)
-        }
-      }];
-    }
-  }
-
-  if ([[dic allKeys] containsObject:@"state"]) {
-
-    int code = [[dic objectForKey:@"state"] intValue];
-
-    if (code == 0) {
-      BOOL sipOnline = ([PortSIPManager shared].sipRegistrationStatus == 2);
-      if (sipOnline) {
-        [self sendEventToFlutter:@{
-          @"event" : @"soft_phone_registration_status",
-          @"data" : @{
-            @"status" : @"online",
-            @"code" : @(code),
-            @"message" : @"在线",
-            @"sipRegistrationStatus" :
-                @([PortSIPManager shared].sipRegistrationStatus)
-          }
-        }];
-      } else {
-        [self sendEventToFlutter:@{
-          @"event" : @"soft_phone_registration_status",
-          @"data" : @{
-            @"status" : @"offline",
-            @"code" : @(code),
-            @"message" : @"未连接",
-            @"sipRegistrationStatus" :
-                @([PortSIPManager shared].sipRegistrationStatus)
-          }
-        }];
-      }
-    } else if (code == 999) {
-      [self sendEventToFlutter:@{
-        @"event" : @"soft_phone_registration_status",
-        @"data" : @{
-          @"status" : @"online",
-          @"code" : @(code),
-          @"message" : @"在线",
-          @"sipRegistrationStatus" :
-              @([PortSIPManager shared].sipRegistrationStatus)
-        }
-      }];
     } else if ([[dic allKeys] containsObject:@"opcode"] &&
-               [[dic objectForKey:@"opcode"] isEqualToString:@"S_AgentState"]) {
+               [[dic objectForKey:@"opcode"] isEqualToString:@"S_RefreshRegistration"]) {
 
-      NSLog(@"soft_phone_status: %@", dic);
-      [self sendEventToFlutter:@{
-        @"event" : @"soft_phone_status",
-        @"data" : @{
-          @"messageDic" : dic,
-          @"code" : @(code),
-          @"message" : [NSString stringWithFormat:@"%d", code],
-          @"sipRegistrationStatus" :
-              @([PortSIPManager shared].sipRegistrationStatus)
-        }
-      }];
-
-      if (code == 11 && [QuanYuSocket shared].hangupToFree == 1) {
-        // 执行置闲
-        [[QuanYuSocket shared]
-            sendRequestWithMessage:@"{\"opcode\": \"C_SetFree\"}"];
-      }
+        [[PortSIPManager shared] refreshRegister];
     }
-  }
+
+    if ([[dic allKeys] containsObject:@"registerState"]) {
+        int code = [[dic objectForKey:@"registerState"] intValue];
+        BOOL sipOnline = ([PortSIPManager shared].sipRegistrationStatus == 2);
+        BOOL online = sipOnline || (code != 0);
+        if (online) {
+            [self sendEventToFlutter:@{
+                @"event" : @"soft_phone_registration_status",
+                @"data" : @{
+                    @"status" : @"online",
+                    @"code" : @(code),
+                    @"message" : @"在线",
+                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                }
+            }];
+        } else {
+            [self sendEventToFlutter:@{
+                @"event" : @"soft_phone_registration_status",
+                @"data" : @{
+                    @"status" : @"offline",
+                    @"code" : @(code),
+                    @"message" : @"软电话离线",
+                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                }
+            }];
+        }
+    }
+
+    if ([[dic allKeys] containsObject:@"state"]) {
+
+        int code = [[dic objectForKey:@"state"] intValue];
+
+        if (code == 0) {
+            BOOL sipOnline = ([PortSIPManager shared].sipRegistrationStatus == 2);
+            if (sipOnline) {
+                [self sendEventToFlutter:@{
+                    @"event" : @"soft_phone_registration_status",
+                    @"data" : @{
+                        @"status" : @"online",
+                        @"code" : @(code),
+                        @"message" : @"在线",
+                        @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                    }
+                }];
+            } else {
+                [self sendEventToFlutter:@{
+                    @"event" : @"soft_phone_registration_status",
+                    @"data" : @{
+                        @"status" : @"offline",
+                        @"code" : @(code),
+                        @"message" : @"未连接",
+                        @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                    }
+                }];
+            }
+        } else if (code == 999) {
+            [self sendEventToFlutter:@{
+                @"event" : @"soft_phone_registration_status",
+                @"data" : @{
+                    @"status" : @"online",
+                    @"code" : @(code),
+                    @"message" : @"在线",
+                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                }
+            }];
+        } else if ([[dic allKeys] containsObject:@"opcode"] &&
+                   [[dic objectForKey:@"opcode"] isEqualToString:@"S_AgentState"]) {
+
+            NSLog(@"soft_phone_status: %@", dic);
+            [self sendEventToFlutter:@{
+                @"event" : @"soft_phone_status",
+                @"data" : @{
+                    @"messageDic" : dic,
+                    @"code" : @(code),
+                    @"message" : [NSString stringWithFormat:@"%d", code],
+                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                }
+            }];
+
+            if (code == 11 && [QuanYuSocket shared].hangupToFree == 1) {
+                // 执行置闲
+                [[QuanYuSocket shared] sendRequestWithMessage:@"{\"opcode\": \"C_SetFree\"}"];
+            }
+        }
+    }
 }
 
 /**
@@ -1027,13 +886,10 @@
  * @param attempts 连接尝试次数
  */
 - (void)onConnecting:(int)attempts {
-  NSLog(@"连接中[onConnecting]: 尝试次数 %d", attempts);
+    NSLog(@"连接中[onConnecting]: 尝试次数 %d", attempts);
 
-  [[QuanYuSocket shared]
-      saveLog:@"start_re_connect"
-      message:[NSString stringWithFormat:@"开始重连：%d", attempts]];
-  [self
-      sendEventToFlutter:@{@"event" : @"onConnecting", @"data" : @(attempts)}];
+    [[QuanYuSocket shared] saveLog:@"start_re_connect" message:[NSString stringWithFormat:@"开始重连：%d", attempts]];
+    [self sendEventToFlutter:@{@"event" : @"onConnecting", @"data" : @(attempts)}];
 }
 
 /**
@@ -1041,17 +897,16 @@
  * 通知Flutter端连接已建立
  */
 - (void)onConnected {
-  NSLog(@"连接成功[onConnected]");
-  [self sendEventToFlutter:@{@"event" : @"onConnected"}];
-  NSDictionary *userDict = [[NSUserDefaults standardUserDefaults]
-      objectForKey:@"QuanYu_websocket_user"];
-  [PortSIPManager shared].userInfo = userDict;
-  if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
-    [[PortSIPManager shared] refreshRegister];
-    [[PortSIPManager shared] attemptUpdateCall];
-  } else {
-    [[PortSIPManager shared] refreshRegister];
-  }
+    NSLog(@"连接成功[onConnected]");
+    [self sendEventToFlutter:@{@"event" : @"onConnected"}];
+    NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
+    [PortSIPManager shared].userInfo = userDict;
+    if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+        [[PortSIPManager shared] refreshRegister];
+        [[PortSIPManager shared] attemptUpdateCall];
+    } else {
+        [[PortSIPManager shared] refreshRegister];
+    }
 }
 
 /**
@@ -1062,39 +917,34 @@
  * @param reason 断开原因描述
  */
 - (void)onDisconnectedWithCode:(int)code WithReason:(NSString *)reason {
-  NSLog(@"连接断开[onDisconnected]: 状态码 %d, 原因: %@", code, reason);
+    NSLog(@"连接断开[onDisconnected]: 状态码 %d, 原因: %@", code, reason);
 
-  [[QuanYuSocket shared]
-      saveLog:@"OnDisconnect"
-      message:[NSString stringWithFormat:
-                            @"连接断开[onDisconnected]: 状态码 %d, 原因: %@",
-                            code, reason]];
+    [[QuanYuSocket shared]
+        saveLog:@"OnDisconnect"
+        message:[NSString stringWithFormat:@"连接断开[onDisconnected]: 状态码 %d, 原因: %@", code, reason]];
 
-  // 坐席连接断开时的软电话注销策略：
-  // 1. 若当前未通话（activeSessionId 为 INVALID_SESSION_ID），立即注销软电话；
-  // 2. 若当前通话中，则设置标记，在通话结束回调（onInviteClosed）中执行注销。
-  if ([PortSIPManager shared].activeSessionId == INVALID_SESSION_ID) {
-    [[PortSIPManager shared] unRegister];
-  } else {
-    [PortSIPManager shared].unregisterWhenCallEnds = YES;
-  }
-
-  [PortSIPManager shared].socketConnected = NO;
-  [self sendEventToFlutter:@{
-    @"event" : @"onDisconnected",
-    @"data" : @{@"code" : @(code), @"reason" : reason ?: @""}
-  }];
-
-  [self sendEventToFlutter:@{
-    @"event" : @"soft_phone_registration_status",
-    @"data" : @{
-      @"status" : @"offline",
-      @"code" : @(0),
-      @"message" : @"软电话离线",
-      @"sipRegistrationStatus" :
-          @([PortSIPManager shared].sipRegistrationStatus)
+    // 坐席连接断开时的软电话注销策略：
+    // 1. 若当前未通话（activeSessionId 为 INVALID_SESSION_ID），立即注销软电话；
+    // 2. 若当前通话中，则设置标记，在通话结束回调（onInviteClosed）中执行注销。
+    if ([PortSIPManager shared].activeSessionId == INVALID_SESSION_ID) {
+        [[PortSIPManager shared] unRegister];
+    } else {
+        [PortSIPManager shared].unregisterWhenCallEnds = YES;
     }
-  }];
+
+    [PortSIPManager shared].socketConnected = NO;
+    [self
+        sendEventToFlutter:@{@"event" : @"onDisconnected", @"data" : @{@"code" : @(code), @"reason" : reason ?: @""}}];
+
+    [self sendEventToFlutter:@{
+        @"event" : @"soft_phone_registration_status",
+        @"data" : @{
+            @"status" : @"offline",
+            @"code" : @(0),
+            @"message" : @"软电话离线",
+            @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+        }
+    }];
 }
 
 /**
@@ -1105,123 +955,106 @@
  * @param reason 失败原因描述
  */
 - (void)onConnectFailedWithCode:(int)code WithReason:(NSString *)reason {
-  // 对reason参数进行null检查，提供默认值
-  NSString *safeReason = reason ?: @"未知错误";
-  [PortSIPManager shared].socketConnected = NO;
+    // 对reason参数进行null检查，提供默认值
+    NSString *safeReason = reason ?: @"未知错误";
+    [PortSIPManager shared].socketConnected = NO;
 
-  NSLog(@"WebSocket连接失败回调[onConnectFailed]: 状态码 %d, 原因: %@", code,
-        safeReason);
+    NSLog(@"WebSocket连接失败回调[onConnectFailed]: 状态码 %d, 原因: %@", code, safeReason);
 
-  [[QuanYuSocket shared]
-      saveLog:@"disconnect"
-      message:[NSString
-                  stringWithFormat:
-                      @"断开[onConnectFailedWithCode]: 状态码 %d, 原因: %@",
-                      code, reason]];
+    [[QuanYuSocket shared]
+        saveLog:@"disconnect"
+        message:[NSString stringWithFormat:@"断开[onConnectFailedWithCode]: 状态码 %d, 原因: %@", code, reason]];
 
-  [self sendEventToFlutter:@{
-    @"event" : @"onConnectFailed",
-    @"data" : @{@"code" : @(code), @"reason" : safeReason}
-  }];
+    [self sendEventToFlutter:@{@"event" : @"onConnectFailed", @"data" : @{@"code" : @(code), @"reason" : safeReason}}];
 
-  [self sendEventToFlutter:@{
-    @"event" : @"soft_phone_registration_status",
-    @"data" : @{
-      @"status" : @"offline",
-      @"code" : @(0),
-      @"message" : @"软电话离线",
-      @"sipRegistrationStatus" :
-          @([PortSIPManager shared].sipRegistrationStatus)
-    }
-  }];
+    [self sendEventToFlutter:@{
+        @"event" : @"soft_phone_registration_status",
+        @"data" : @{
+            @"status" : @"offline",
+            @"code" : @(0),
+            @"message" : @"软电话离线",
+            @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+        }
+    }];
 }
 
 #pragma mark - PortSIPManagerDelegate
 // 注册回调
 - (void)registerSoftPhoneCallback:(int)code errorMsg:(NSString *)error {
-  NSLog(@"registerSoftPhoneCallback:%d errorMsg:%@", code, error);
-  NSLog(@"当前sipRegistrationStatus: %d",
-        [PortSIPManager shared].sipRegistrationStatus);
+    NSLog(@"registerSoftPhoneCallback:%d errorMsg:%@", code, error);
+    NSLog(@"当前sipRegistrationStatus: %d", [PortSIPManager shared].sipRegistrationStatus);
 
-  if ([PortSIPManager shared].sipRegistrationStatus == 2) {
-    // 注册成功
-    NSLog(@"软电话注册成功，发送事件给Flutter");
-    NSDictionary *eventData = @{
-      @"event" : @"soft_phone_registration_status",
-      @"data" : @{
-        @"status" : @"online",
-        @"code" : @(code),
-        @"message" : @"软电话注册成功",
-        @"sipRegistrationStatus" :
-            @([PortSIPManager shared].sipRegistrationStatus)
-      }
-    };
-    NSLog(@"发送事件数据: %@", eventData);
-    [self sendEventToFlutter:eventData];
+    if ([PortSIPManager shared].sipRegistrationStatus == 2) {
+        // 注册成功
+        NSLog(@"软电话注册成功，发送事件给Flutter");
+        NSDictionary *eventData = @{
+            @"event" : @"soft_phone_registration_status",
+            @"data" : @{
+                @"status" : @"online",
+                @"code" : @(code),
+                @"message" : @"软电话注册成功",
+                @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+            }
+        };
+        NSLog(@"发送事件数据: %@", eventData);
+        [self sendEventToFlutter:eventData];
 
-    self.isRegisterSoftPhone = YES;
+        self.isRegisterSoftPhone = YES;
 
-    [[QuanYuSocket shared] saveLog:@"RegisterServer" message:@"软电话成功"];
+        [[QuanYuSocket shared] saveLog:@"RegisterServer" message:@"软电话成功"];
 
-  } else if ([PortSIPManager shared].sipRegistrationStatus == 3) {
-    // 注册失败
-    NSLog(@"软电话注册失败: %@", error);
-    [self sendEventToFlutter:@{
-      @"event" : @"soft_phone_registration_status",
-      @"data" : @{
-        @"status" : @"offline",
-        @"code" : @(code),
-        @"message" : error ?: @"软电话注册失败",
-        @"sipRegistrationStatus" :
-            @([PortSIPManager shared].sipRegistrationStatus)
-      }
-    }];
+    } else if ([PortSIPManager shared].sipRegistrationStatus == 3) {
+        // 注册失败
+        NSLog(@"软电话注册失败: %@", error);
+        [self sendEventToFlutter:@{
+            @"event" : @"soft_phone_registration_status",
+            @"data" : @{
+                @"status" : @"offline",
+                @"code" : @(code),
+                @"message" : error ?: @"软电话注册失败",
+                @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+            }
+        }];
 
-    self.isRegisterSoftPhone = NO;
+        self.isRegisterSoftPhone = NO;
 
-  } else {
-    // 其他状态
-    typeof(self) weakSelf = self;
-    dispatch_time_t popTime =
-        dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC));
-    dispatch_after(popTime, dispatch_get_main_queue(), ^(void) {
-      [weakSelf sendEventToFlutter:@{
-        @"event" : @"soft_phone_registration_status",
-        @"data" : @{
-          @"status" : @"offline",
-          @"code" : @(1),
-          @"message" : error ?: @"软电话注册失败",
-          @"sipRegistrationStatus" :
-              @([PortSIPManager shared].sipRegistrationStatus)
-        }
-      }];
+    } else {
+        // 其他状态
+        typeof(self) weakSelf = self;
+        dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC));
+        dispatch_after(popTime, dispatch_get_main_queue(), ^(void) {
+          [weakSelf sendEventToFlutter:@{
+              @"event" : @"soft_phone_registration_status",
+              @"data" : @{
+                  @"status" : @"offline",
+                  @"code" : @(1),
+                  @"message" : error ?: @"软电话注册失败",
+                  @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+              }
+          }];
 
-      weakSelf.isRegisterSoftPhone = NO;
+          weakSelf.isRegisterSoftPhone = NO;
 
-      [[QuanYuSocket shared]
-          saveLog:@"Service-portSip-unRegisterServer"
-          message:[NSString
-                      stringWithFormat:
-                          @"软电话注册失败 sipRegistrationStatus = %@",
-                          @([PortSIPManager shared].sipRegistrationStatus)]];
-    });
-  }
+          [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer"
+                                 message:[NSString stringWithFormat:@"软电话注册失败 sipRegistrationStatus = %@",
+                                                                    @([PortSIPManager shared].sipRegistrationStatus)]];
+        });
+    }
 }
 
 - (void)CallJSWithJSonStr:(nonnull NSString *)JSStr {
-  NSLog(@"CallJSWithJSonStr:%@", JSStr);
+    NSLog(@"CallJSWithJSonStr:%@", JSStr);
 }
 
-- (void)pushAppLogToWeb:(nonnull NSString *)message
-                   info:(nonnull NSString *)info {
-  NSLog(@"pushAppLogToWeb:%@ info:%@", message, info);
+- (void)pushAppLogToWeb:(nonnull NSString *)message info:(nonnull NSString *)info {
+    NSLog(@"pushAppLogToWeb:%@ info:%@", message, info);
 }
 
 - (void)onSipForbidden403 {
-  if ([[QuanYuSocket shared] respondsToSelector:@selector(disconnect)]) {
-    [[QuanYuSocket shared] performSelector:@selector(disconnect)];
-  }
-  [[QuanYuSocket shared] reStarConnectServer];
+    if ([[QuanYuSocket shared] respondsToSelector:@selector(disconnect)]) {
+        [[QuanYuSocket shared] performSelector:@selector(disconnect)];
+    }
+    [[QuanYuSocket shared] reStarConnectServer];
 }
 
 #pragma mark - FlutterStreamHandler 协议实现
@@ -1234,26 +1067,25 @@
  * @param events 事件发送器，用于向Flutter发送事件
  * @return 错误信息，成功时返回nil
  */
-- (FlutterError *_Nullable)onListenWithArguments:(id _Nullable)arguments
-                                       eventSink:(FlutterEventSink)events {
-  NSLog(@"Flutter开始监听事件通道");
-  self.eventSink = events;
+- (FlutterError *_Nullable)onListenWithArguments:(id _Nullable)arguments eventSink:(FlutterEventSink)events {
+    NSLog(@"Flutter开始监听事件通道");
+    self.eventSink = events;
 
-  // 将缓冲的事件依次下发
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if (self.eventBuffer.count > 0 && self.eventSink) {
-      for (NSDictionary *ev in self.eventBuffer) {
-        [self sendEventToFlutter:ev];
+    // 将缓冲的事件依次下发
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (self.eventBuffer.count > 0 && self.eventSink) {
+          for (NSDictionary *ev in self.eventBuffer) {
+              [self sendEventToFlutter:ev];
+          }
+          [self.eventBuffer removeAllObjects];
       }
-      [self.eventBuffer removeAllObjects];
-    }
-  });
+    });
 
-  return nil;
+    return nil;
 }
 
 - (FlutterError *_Nullable)onCancelWithArguments:(id _Nullable)arguments {
-  return [self onCancel:arguments];
+    return [self onCancel:arguments];
 }
 
 /**
@@ -1264,66 +1096,71 @@
  * @return 错误信息，成功时返回nil
  */
 - (FlutterError *_Nullable)onCancel:(id _Nullable)arguments {
-  self.eventSink = nil;
-  return nil;
+    self.eventSink = nil;
+    [self.eventBuffer removeAllObjects];
+    return nil;
 }
 
 - (NSMutableDictionary *)infoDic {
-  if (!_infoDic) {
-    _infoDic = [NSMutableDictionary dictionaryWithCapacity:0];
+    if (!_infoDic) {
+        _infoDic = [NSMutableDictionary dictionaryWithCapacity:0];
 
-    [_infoDic setObject:@"离线" forKey:@"0"];
-    [_infoDic setObject:@"空闲" forKey:@"1"];
-    [_infoDic setObject:@"置忙中" forKey:@"2"];
-    [_infoDic setObject:@"抢接" forKey:@"3"];
-    [_infoDic setObject:@"选出队列" forKey:@"4"];
-    [_infoDic setObject:@"来电振铃" forKey:@"5"];
-    [_infoDic setObject:@"通话中" forKey:@"6"];
-    [_infoDic setObject:@"转接中" forKey:@"7"];
-    [_infoDic setObject:@"等待转移确认" forKey:@"8"];
-    [_infoDic setObject:@"保持中" forKey:@"9"];
-    [_infoDic setObject:@"会议中" forKey:@"10"];
-    [_infoDic setObject:@"话后处理" forKey:@"11"];
-    [_infoDic setObject:@"输入被叫号码" forKey:@"12"];
-    [_infoDic setObject:@"发起呼叫" forKey:@"13"];
-    [_infoDic setObject:@"管理状态" forKey:@"14"];
-    [_infoDic setObject:@"监听" forKey:@"15"];
-    [_infoDic setObject:@"强插" forKey:@"16"];
-    [_infoDic setObject:@"等待电话登录" forKey:@"17"];
-    [_infoDic setObject:@"等待脚本Free" forKey:@"18"];
-    [_infoDic setObject:@"通话中" forKey:@"19"];
-    [_infoDic setObject:@"通话中" forKey:@"20"];
-    [_infoDic setObject:@"发起会议邀请" forKey:@"21"];
-    [_infoDic setObject:@"会议通话确认" forKey:@"22"];
-    [_infoDic setObject:@"会议主持人" forKey:@"23"];
-    [_infoDic setObject:@"会议确认通话中" forKey:@"24"];
-    [_infoDic setObject:@"会议成员" forKey:@"25"];
-    [_infoDic setObject:@"等待pc登录" forKey:@"26"];
-    [_infoDic setObject:@"正在呼叫坐席" forKey:@"27"];
-    [_infoDic setObject:@"会议中" forKey:@"28"];
-    [_infoDic setObject:@"小休" forKey:@"29"];
-    [_infoDic setObject:@"静音" forKey:@"30"];
-  }
-  return _infoDic;
+        [_infoDic setObject:@"离线" forKey:@"0"];
+        [_infoDic setObject:@"空闲" forKey:@"1"];
+        [_infoDic setObject:@"置忙中" forKey:@"2"];
+        [_infoDic setObject:@"抢接" forKey:@"3"];
+        [_infoDic setObject:@"选出队列" forKey:@"4"];
+        [_infoDic setObject:@"来电振铃" forKey:@"5"];
+        [_infoDic setObject:@"通话中" forKey:@"6"];
+        [_infoDic setObject:@"转接中" forKey:@"7"];
+        [_infoDic setObject:@"等待转移确认" forKey:@"8"];
+        [_infoDic setObject:@"保持中" forKey:@"9"];
+        [_infoDic setObject:@"会议中" forKey:@"10"];
+        [_infoDic setObject:@"话后处理" forKey:@"11"];
+        [_infoDic setObject:@"输入被叫号码" forKey:@"12"];
+        [_infoDic setObject:@"发起呼叫" forKey:@"13"];
+        [_infoDic setObject:@"管理状态" forKey:@"14"];
+        [_infoDic setObject:@"监听" forKey:@"15"];
+        [_infoDic setObject:@"强插" forKey:@"16"];
+        [_infoDic setObject:@"等待电话登录" forKey:@"17"];
+        [_infoDic setObject:@"等待脚本Free" forKey:@"18"];
+        [_infoDic setObject:@"通话中" forKey:@"19"];
+        [_infoDic setObject:@"通话中" forKey:@"20"];
+        [_infoDic setObject:@"发起会议邀请" forKey:@"21"];
+        [_infoDic setObject:@"会议通话确认" forKey:@"22"];
+        [_infoDic setObject:@"会议主持人" forKey:@"23"];
+        [_infoDic setObject:@"会议确认通话中" forKey:@"24"];
+        [_infoDic setObject:@"会议成员" forKey:@"25"];
+        [_infoDic setObject:@"等待pc登录" forKey:@"26"];
+        [_infoDic setObject:@"正在呼叫坐席" forKey:@"27"];
+        [_infoDic setObject:@"会议中" forKey:@"28"];
+        [_infoDic setObject:@"小休" forKey:@"29"];
+        [_infoDic setObject:@"静音" forKey:@"30"];
+    }
+    return _infoDic;
 }
 
 /**
  * 获取当前扬声器（免提）状态
  * 返回：true 表示开启，false 表示关闭
  */
-- (void)handleGetSpeakerEnabled:(FlutterMethodCall *)call
-                         result:(FlutterResult)result {
-  @try {
-    BOOL enabled = [[PortSIPManager shared] isSpeakerEnabled];
-    result(@(enabled));
-  } @catch (NSException *exception) {
-    result([FlutterError
-        errorWithCode:@"GET_SPEAKER_STATE_EXCEPTION"
-              message:[NSString
-                          stringWithFormat:@"获取扬声器状态时发生异常: %@",
-                                           exception.reason]
-              details:nil]);
-  }
+- (void)handleGetSpeakerEnabled:(FlutterMethodCall *)call result:(FlutterResult)result {
+    @try {
+        BOOL enabled = [[PortSIPManager shared] isSpeakerEnabled];
+        result(@(enabled));
+    } @catch (NSException *exception) {
+        result([FlutterError errorWithCode:@"GET_SPEAKER_STATE_EXCEPTION"
+                                   message:[NSString stringWithFormat:@"获取扬声器状态时发生异常: %@", exception.reason]
+                                   details:nil]);
+    }
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [QuanYuSocket shared].delegate = nil;
+    [PortSIPManager shared].delegate = nil;
+    self.eventSink = nil;
+    [self.eventBuffer removeAllObjects];
 }
 
 @end

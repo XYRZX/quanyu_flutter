@@ -310,6 +310,10 @@
 
     // 关闭定时器
     [self stopPhoneRefreshTimer];
+    if (_autoRegisterTimer) {
+        [_autoRegisterTimer invalidate];
+        _autoRegisterTimer = nil;
+    }
 
     // 清理会话状态，避免残留导致后续来电线路耗尽或错接
     _activeSessionId = INVALID_SESSION_ID;
@@ -443,7 +447,24 @@
         _sipInitialized = NO;
 
         _sipRegistrationStatus = 3;
+
+        if (_autoRegisterTimer) {
+            [_autoRegisterTimer invalidate];
+            _autoRegisterTimer = nil;
+        }
     }
+}
+
+- (void)dealloc {
+    if (_phoneRefreshTimer) {
+        [_phoneRefreshTimer invalidate];
+        _phoneRefreshTimer = nil;
+    }
+    if (_autoRegisterTimer) {
+        [_autoRegisterTimer invalidate];
+        _autoRegisterTimer = nil;
+    }
+    self.delegate = nil;
 }
 
 #pragma mark - 私有方法
