@@ -919,6 +919,7 @@
     } else {
         [[PortSIPManager shared] refreshRegister];
     }
+    [[PortSIPManager shared] startPhoneRefreshTimer];
 }
 
 /**
@@ -1014,6 +1015,8 @@
         self.isRegisterSoftPhone = YES;
 
         [[QuanYuSocket shared] saveLog:@"RegisterServer" message:@"软电话成功"];
+
+        [[PortSIPManager shared] startPhoneRefreshTimer];
 
     } else if ([PortSIPManager shared].sipRegistrationStatus == 3) {
         // 注册失败

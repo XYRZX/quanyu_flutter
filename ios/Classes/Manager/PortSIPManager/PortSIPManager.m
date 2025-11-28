@@ -111,6 +111,8 @@
         [self offLine];
     }
 
+    [(id)_portSIPSDK setDelegate:self];
+
     [[QuanYuSocket shared] saveLog:@"RegisterServer" message:@"注册软电话"];
 
     NSString *authName = [_userInfo objectForKey:@"name"];
@@ -318,8 +320,6 @@
         dispatch_async(dispatch_get_main_queue(), ^{
           [(id)_portSIPSDK enableCallbackSignaling:NO enableReceived:NO];
           [(id)_portSIPSDK setDelegate:nil];
-        });
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
           [(id)_portSIPSDK unInitialize];
           _sipInitialized = NO;
           self.isUninitializing = NO;
@@ -422,8 +422,10 @@
 
 // 刷新注册
 - (void)refreshRegister {
-
     if (self.isUninitializing) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+          [self onLine];
+        });
         return;
     }
     if (_sipRegistrationStatus == 0) {
