@@ -105,6 +105,8 @@ class _HomePageState extends State<HomePage> {
   /// 软电话是否在线
   bool _isSoftPhoneOnline = false;
 
+  bool _initialStateApplied = false;
+
   /// 保存完整的消息数据，用于下拉菜单操作
   Map<String, dynamic>? _savedMessageDic;
 
@@ -144,26 +146,20 @@ class _HomePageState extends State<HomePage> {
 
   /// 判断指定状态是否可用
   bool _isStateEnabled(String stateName, int currentCode) {
-    // 重新注册分机总是可用，不受其他条件限制
     if (stateName == '重新注册分机') {
       return true;
     }
 
-    // 如果_savedMessageDic为空，其他选项都不可用
-    if (_savedMessageDic == null) {
+    if (_savedMessageDic == null && !_isSoftPhoneOnline) {
       return false;
     }
 
-    // 根据iOS逻辑判断状态是否可用
     switch (stateName) {
       case '置忙':
-        // 只要收到软电话状态事件，置忙始终可点击
         return true;
       case '置闲':
-        // 只要收到软电话状态事件，置闲始终可点击
         return true;
       case '小休':
-        // 仅在空闲或置忙状态下允许小休
         return currentCode == 1 || currentCode == 2;
       default:
         return false;
@@ -295,9 +291,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _applyInitialBusyFromPrefs() async {
     try {
-      // final prefs = await SharedPreferences.getInstance();
-      // final int? agentState = prefs.getInt('agent_state');
-      // final bool busyFlag = prefs.getBool('login_busy') ?? false;
+      final prefs = await SharedPreferences.getInstance();
+      final int? agentState = prefs.getInt('agent_state');
+      final bool busyFlag = prefs.getBool('login_busy') ?? false;
 
       // 如果已经从事件中获取到当前坐席状态，且不是空闲/置忙/小休，则不覆盖为置闲
       int currentCode = 0;
@@ -318,32 +314,31 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      // if (agentState == 29) {
-      //   await _sendSetRestOpcode();
-      //   if (mounted) {
-      //     setState(() {
-      //       _agentState = 29;
-      //       _dropDownText = _fullAgentStateMap[29] ?? '小休';
-      //     });
-      //   }
-      // } else if (agentState == 2 || (agentState == null && busyFlag)) {
-      //   await _sendSetBusyOpcode();
-      //   if (mounted) {
-      //     setState(() {
-      //       _agentState = 2;
-      //       _dropDownText = _fullAgentStateMap[2] ?? '置忙中';
-      //     });
-      //   }
-      // }
-      // else {
-      //   await _sendSetFreeOpcode();
-      //   if (mounted) {
-      //     setState(() {
-      //       _agentState = 1;
-      //       _dropDownText = _fullAgentStateMap[1] ?? '空闲';
-      //     });
-      //   }
-      // }
+      if (agentState == 29) {
+        await _sendSetRestOpcode();
+        if (mounted) {
+          setState(() {
+            _agentState = 29;
+            _dropDownText = _fullAgentStateMap[29] ?? '小休';
+          });
+        }
+      } else if (agentState == 2 || (agentState == null && busyFlag)) {
+        await _sendSetBusyOpcode();
+        if (mounted) {
+          setState(() {
+            _agentState = 2;
+            _dropDownText = _fullAgentStateMap[2] ?? '置忙中';
+          });
+        }
+      } else {
+        await _sendSetFreeOpcode();
+        if (mounted) {
+          setState(() {
+            _agentState = 1;
+            _dropDownText = _fullAgentStateMap[1] ?? '空闲';
+          });
+        }
+      }
 
       _updateAvailableStates();
     } catch (e) {
@@ -838,7 +833,17 @@ class _HomePageState extends State<HomePage> {
 
       debugPrint(
           '软电话状态更新: $_softPhoneStatus, SIP状态: $sipRegistrationStatus, 消息: $message');
+
+      if (_isSoftPhoneOnline &&
+          (_dropDownText == '离线' || _dropDownText.isEmpty)) {
+        _dropDownText = '空闲';
+      }
     });
+
+    if (_isSoftPhoneOnline && !_initialStateApplied) {
+      _initialStateApplied = true;
+      _applyInitialBusyFromPrefs();
+    }
   }
 
   /// 处理软电话状态事件
@@ -890,12 +895,16 @@ class _HomePageState extends State<HomePage> {
       if (code != null) {
         setState(() {
           _agentState = code;
-          // 使用完整的状态映射表获取状态显示文本
-          _dropDownText = _fullAgentStateMap[code] ?? '未知状态($code)';
 
-          // 更新软电话在线状态
-          _isSoftPhoneOnline = sipRegistrationStatus == 2; // 2表示注册成功
-          _softPhoneStatus = _isSoftPhoneOnline ? '在线' : '离线';
+          final bool online = sipRegistrationStatus == 2;
+          _isSoftPhoneOnline = online;
+          _softPhoneStatus = online ? '在线' : '离线';
+
+          String text = _fullAgentStateMap[code] ?? '未知状态($code)';
+          if (online && (text.isEmpty || text == '离线')) {
+            text = '空闲';
+          }
+          _dropDownText = text;
         });
 
         // 更新可用状态列表
@@ -1250,8 +1259,8 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 10),
             _buildStatusRow('软电话状态', _softPhoneStatus, _isSoftPhoneOnline),
-            _buildStatusRow('坐席状态', _isSoftPhoneOnline ? _dropDownText : '离线',
-                _isSoftPhoneOnline && _agentState == 1),
+            _buildStatusRow(
+                '坐席状态', _resolveAgentDisplayText(), _isSoftPhoneOnline),
           ],
         ),
       ),
@@ -1282,7 +1291,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(width: 8),
               Text(
-                !isOnline && value == "空闲" ? "离线" : value,
+                value,
                 style: TextStyle(
                   fontSize: 14,
                   color: isOnline ? Colors.green : Colors.red,
@@ -1294,6 +1303,17 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+
+  String _resolveAgentDisplayText() {
+    if (_isSoftPhoneOnline) {
+      final txt = _dropDownText;
+      if (txt.isEmpty || txt == '离线') {
+        return '空闲';
+      }
+      return txt;
+    }
+    return '离线';
   }
 
   /// 构建音量控制卡片
