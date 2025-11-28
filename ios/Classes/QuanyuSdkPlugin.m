@@ -138,30 +138,78 @@
     self.lastNetStatus = netStatus;
     if ([netStatus isEqualToString:@"有网"]) {
         if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
-            // 有通话的情况
-            [[PortSIPManager shared] refreshRegister];
+            NSLog(@"[QY_RECOVERY_FLOW] NET_RECOVERED_INCALL: "
+                  @"有网但正在通话，立即重新登录Socket，不进行注册操作");
+            NSLog(@"[QY_RECOVERY_FLOW] RECOVER_INCALL_UPDATECALL: 触发 "
+                  @"attemptUpdateCall 同步通话状态");
             [[PortSIPManager shared] attemptUpdateCall];
         } else {
-
-            NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
-            [PortSIPManager shared].userInfo = userDict;
-            [[PortSIPManager shared] refreshRegister];
+            NSLog(@"[QY_RECOVERY_FLOW] NET_RECOVERED_IDLE: "
+                  @"非通话状态，立即重新登录Socket");
         }
 
-        [[QuanYuSocket shared] reStarConnectServer];
-    } else if ([netStatus isEqualToString:@"无网"]) {
+        NSDictionary *p = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_last_login_params"];
+        BOOL force = [[NSUserDefaults standardUserDefaults] boolForKey:@"QuanYu_force_login"];
+        if ([p isKindOfClass:[NSDictionary class]]) {
+            QuanYuLoginModel *model = [[QuanYuLoginModel alloc] init];
+            model.domain = p[@"loginUrl"];
+            model.gid = p[@"gid"];
+            model.code = p[@"code"];
+            model.extPhone = p[@"extPhone"];
+            model.appKey = p[@"appKey"];
+            model.secretKey = p[@"secretKey"];
+            NSLog(@"[QY_RECOVERY_FLOW] SOCKET_RELOGIN_ON_NETWORK_RECOVER: "
+                  @"使用最近参数重新登录Socket");
+            [[QuanYuSocket shared] login:model
+                                   force:force
+                              completion:^(BOOL success, NSString *_Nonnull errorMessage) {
+                                if (success) {
+                                    NSLog(@"[QY_RECOVERY_FLOW] SOCKET_RELOGIN_RESULT: 成功");
+                                } else {
+                                    NSLog(@"[QY_RECOVERY_FLOW] SOCKET_RELOGIN_RESULT: 失败 %@", errorMessage ?: @"");
+                                }
+                              }];
+        } else {
+            NSLog(@"[QY_RECOVERY_FLOW] SOCKET_RELOGIN_FALLBACK: "
+                  @"缺少最近登录参数，触发基础重连");
+            [[QuanYuSocket shared] reStarConnectServer];
+        }
+
         [self sendEventToFlutter:@{
             @"event" : @"soft_phone_registration_status",
             @"data" : @{
                 @"status" : @"offline",
                 @"code" : @(0),
-                @"message" : @"软电话离线",
+                @"message" : @"网络恢复中，正在重新连接",
                 @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
             }
         }];
-        if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
+    } else if ([netStatus isEqualToString:@"无网"]) {
+        BOOL inCall = ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID);
+        if (inCall) {
+            NSLog(@"[QY_RECOVERY_FLOW] START: "
+                  @"通话中检测到断网，保持通话；前端显示离线，挂断后仅刷新软电话注册");
             [PortSIPManager shared].unregisterWhenCallEnds = YES;
+            [PortSIPManager shared].socketConnected = NO;
+            [self sendEventToFlutter:@{
+                @"event" : @"soft_phone_registration_status",
+                @"data" : @{
+                    @"status" : @"offline",
+                    @"code" : @(0),
+                    @"message" : @"网络断开，通话保持，等待恢复",
+                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                }
+            }];
         } else {
+            [self sendEventToFlutter:@{
+                @"event" : @"soft_phone_registration_status",
+                @"data" : @{
+                    @"status" : @"offline",
+                    @"code" : @(0),
+                    @"message" : @"软电话离线",
+                    @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+                }
+            }];
             [[PortSIPManager shared] unRegister];
         }
     }
@@ -887,6 +935,12 @@
                 // 执行置闲
                 [[QuanYuSocket shared] sendRequestWithMessage:@"{\"opcode\": \"C_SetFree\"}"];
             }
+
+            if (code == 11) {
+                [[PortSIPManager shared] refreshRegister];
+                NSLog(@"[QY_RECOVERY_FLOW] REFRESH_AFTER_REMOTE_HANGUP: "
+                      @"收到对方挂断/置闲消息，刷新软电话注册");
+            }
         }
     }
 }
@@ -899,6 +953,7 @@
  */
 - (void)onConnecting:(int)attempts {
     NSLog(@"连接中[onConnecting]: 尝试次数 %d", attempts);
+    NSLog(@"[QY_RECOVERY_FLOW] SOCKET_RECONNECTING: 正在重连，尝试次数 %d", attempts);
 
     [[QuanYuSocket shared] saveLog:@"start_re_connect" message:[NSString stringWithFormat:@"开始重连：%d", attempts]];
     [self sendEventToFlutter:@{@"event" : @"onConnecting", @"data" : @(attempts)}];
@@ -910,15 +965,41 @@
  */
 - (void)onConnected {
     NSLog(@"连接成功[onConnected]");
+    NSLog(@"[QY_RECOVERY_FLOW] SOCKET_CONNECTED: 连接成功，触发软电话重新注册流程");
+    [PortSIPManager shared].socketConnected = YES;
+
     [self sendEventToFlutter:@{@"event" : @"onConnected"}];
     NSDictionary *userDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_websocket_user"];
     [PortSIPManager shared].userInfo = userDict;
     if ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID) {
-        [[PortSIPManager shared] refreshRegister];
+        NSLog(@"[QY_RECOVERY_FLOW] ONCONNECTED_INCALL: "
+              @"仅同步连接事件，不进行注册操作");
+        NSLog(@"[QY_RECOVERY_FLOW] RECOVER_INCALL_UPDATECALL: 触发 "
+              @"attemptUpdateCall 同步通话状态");
+        [PortSIPManager shared].unregisterWhenCallEnds = NO;
         [[PortSIPManager shared] attemptUpdateCall];
     } else {
-        [[PortSIPManager shared] refreshRegister];
+        NSLog(@"[QY_RECOVERY_FLOW] TRIGGER_REREGISTER: 非通话状态刷新注册");
+        if (![PortSIPManager shared].userInfo) {
+            NSLog(@"[QY_RECOVERY_FLOW] MISSING_USER_INFO: 无用户数据，无法重新注册");
+        }
+        if ([PortSIPManager shared].sipRegistrationStatus == 2) {
+            [[PortSIPManager shared] refreshRegister];
+        } else {
+            NSLog(@"[QY_RECOVERY_FLOW] REREGISTER_START: 非通话状态触发 onLine "
+                  @"重新注册");
+            [[PortSIPManager shared] onLine];
+        }
     }
+    [self sendEventToFlutter:@{
+        @"event" : @"soft_phone_registration_status",
+        @"data" : @{
+            @"status" : @"online",
+            @"code" : @(999),
+            @"message" : @"已连接",
+            @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
+        }
+    }];
     [[PortSIPManager shared] startPhoneRefreshTimer];
 }
 
@@ -942,19 +1023,26 @@
     if ([PortSIPManager shared].activeSessionId == INVALID_SESSION_ID) {
         [[PortSIPManager shared] unRegister];
     } else {
+        NSLog(@"[QY_RECOVERY_FLOW] START: "
+              @"通话中检测到Socket断开，保持通话；挂断后仅刷新软电话注册，Socket保"
+              @"持连接");
         [PortSIPManager shared].unregisterWhenCallEnds = YES;
     }
 
     [PortSIPManager shared].socketConnected = NO;
     [self
         sendEventToFlutter:@{@"event" : @"onDisconnected", @"data" : @{@"code" : @(code), @"reason" : reason ?: @""}}];
-
+    BOOL sipOnline =
+        ([PortSIPManager shared].sipRegistrationStatus == 2 || [PortSIPManager shared].sipRegistrationStatus == 1);
+    BOOL inCall = ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID);
+    NSString *statusStr = (sipOnline || inCall) ? @"online" : @"offline";
+    NSString *msgStr = (sipOnline || inCall) ? @"网络恢复中" : @"软电话离线";
     [self sendEventToFlutter:@{
         @"event" : @"soft_phone_registration_status",
         @"data" : @{
-            @"status" : @"offline",
+            @"status" : statusStr,
             @"code" : @(0),
-            @"message" : @"软电话离线",
+            @"message" : msgStr,
             @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
         }
     }];
@@ -979,13 +1067,17 @@
         message:[NSString stringWithFormat:@"断开[onConnectFailedWithCode]: 状态码 %d, 原因: %@", code, reason]];
 
     [self sendEventToFlutter:@{@"event" : @"onConnectFailed", @"data" : @{@"code" : @(code), @"reason" : safeReason}}];
-
+    BOOL sipOnline =
+        ([PortSIPManager shared].sipRegistrationStatus == 2 || [PortSIPManager shared].sipRegistrationStatus == 1);
+    BOOL inCall = ([PortSIPManager shared].activeSessionId != INVALID_SESSION_ID);
+    NSString *statusStr = (sipOnline || inCall) ? @"online" : @"offline";
+    NSString *msgStr = (sipOnline || inCall) ? @"网络恢复中" : @"软电话离线";
     [self sendEventToFlutter:@{
         @"event" : @"soft_phone_registration_status",
         @"data" : @{
-            @"status" : @"offline",
+            @"status" : statusStr,
             @"code" : @(0),
-            @"message" : @"软电话离线",
+            @"message" : msgStr,
             @"sipRegistrationStatus" : @([PortSIPManager shared].sipRegistrationStatus)
         }
     }];
@@ -1000,6 +1092,7 @@
     if ([PortSIPManager shared].sipRegistrationStatus == 2) {
         // 注册成功
         NSLog(@"软电话注册成功，发送事件给Flutter");
+        NSLog(@"[QY_RECOVERY_FLOW] REREGISTER_SUCCESS: 软电话重新注册成功");
         NSDictionary *eventData = @{
             @"event" : @"soft_phone_registration_status",
             @"data" : @{
@@ -1021,6 +1114,7 @@
     } else if ([PortSIPManager shared].sipRegistrationStatus == 3) {
         // 注册失败
         NSLog(@"软电话注册失败: %@", error);
+        NSLog(@"[QY_RECOVERY_FLOW] REREGISTER_FAIL: 软电话重新注册失败 %@", error ?: @"");
         [self sendEventToFlutter:@{
             @"event" : @"soft_phone_registration_status",
             @"data" : @{

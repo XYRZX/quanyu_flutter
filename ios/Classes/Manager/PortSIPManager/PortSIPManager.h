@@ -76,8 +76,9 @@ NS_ASSUME_NONNULL_BEGIN
 // 标记：坐席连接断开且当前通话未结束时，通话结束后执行软电话注销
 @property(nonatomic, assign) BOOL unregisterWhenCallEnds;
 
-@property(nonatomic, assign) int sipRegistrationStatus; // 0 - 未注册 1 - 注册中 2 - 已注册 3 -
-                                                        // 注册失败/已注销
+@property(nonatomic, assign)
+    int sipRegistrationStatus; // 0 - 未注册 1 - 注册中 2 - 已注册 3 -
+                               // 注册失败/已注销
 
 @property(nonatomic, strong) NSDictionary *userInfo; // 登录用户的信息
 

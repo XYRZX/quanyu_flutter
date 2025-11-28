@@ -104,6 +104,8 @@
 
     if (!_userInfo) {
         NSLog(@"没有用户数据");
+        NSLog(@"[QY_RECOVERY_FLOW] MISSING_USER_INFO: PortSIPManager.userInfo "
+              @"为空，无法执行 onLine");
         return;
     }
 
@@ -393,6 +395,10 @@
 }
 
 - (void)onPhoneRefreshTimer {
+    if (!self.socketConnected) {
+        NSLog(@"[QY_RECOVERY_FLOW] TIMER_SKIP_NO_SOCKET: Socket未连接，跳过定时刷新");
+        return;
+    }
     [[QuanYuSocket shared] saveLog:@"startPhoneRefreshTimer" message:@"执行中"];
     BOOL inCall = (_activeSessionId != INVALID_SESSION_ID);
     NSLog(@"startPhoneRefreshTimer: inCall=%@, activeSessionId=%ld, "
@@ -404,7 +410,7 @@
         [self refreshRegister];
         [self attemptUpdateCall];
     } else {
-        [self refreshRegister];
+        [self onLine];
     }
 }
 
@@ -624,7 +630,9 @@
     }
 
     if (self.unregisterWhenCallEnds) {
-        [self unRegister];
+        NSLog(@"[QY_RECOVERY_FLOW] REFRESH_AFTER_HANGUP: "
+              @"通话结束后刷新软电话注册，不销毁实例");
+        [self refreshRegister];
         self.unregisterWhenCallEnds = NO;
     }
     [_sessionVideoFlags removeObjectForKey:[NSNumber numberWithLong:sessionId]];

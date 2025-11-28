@@ -271,6 +271,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _callerController.text = '1000952341111';
+    _calleeController.text = '';
     _initializeApp();
   }
 
@@ -824,15 +826,18 @@ class _HomePageState extends State<HomePage> {
     if (data == null) return;
 
     setState(() {
-      String status = data['status'] ?? 'offline';
-      _isSoftPhoneOnline = status == 'online';
+      final String rawStatus = data['status'] ?? 'offline';
+      final int sipStatusDyn = data['sipRegistrationStatus'] ?? 0;
+      final int sipStatus = sipStatusDyn is int
+          ? sipStatusDyn
+          : (sipStatusDyn is num ? sipStatusDyn.toInt() : 0);
+
+      final bool onlineBySip = (sipStatus == 2 || sipStatus == 1);
+      _isSoftPhoneOnline = onlineBySip || rawStatus == 'online';
       _softPhoneStatus = _isSoftPhoneOnline ? '在线' : '离线';
 
-      String message = data['message'] ?? '';
-      int sipRegistrationStatus = data['sipRegistrationStatus'] ?? 0;
-
-      debugPrint(
-          '软电话状态更新: $_softPhoneStatus, SIP状态: $sipRegistrationStatus, 消息: $message');
+      final String message = data['message'] ?? '';
+      debugPrint('软电话状态更新: $_softPhoneStatus, SIP状态: $sipStatus, 消息: $message');
 
       if (_isSoftPhoneOnline &&
           (_dropDownText == '离线' || _dropDownText.isEmpty)) {

@@ -4,7 +4,7 @@ import Reachability
 import UIKit
 import quanyu_sdk
 
-@UIApplicationMain
+@main
 @objc class AppDelegate: FlutterAppDelegate {
 
     // MARK: - Properties
