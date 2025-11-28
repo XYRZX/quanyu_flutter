@@ -429,6 +429,7 @@
     if (_sipInitialized) {
         [self offLine];
     }
+    [self stopPhoneRefreshTimer];
     if ([self.delegate respondsToSelector:@selector(onSipForbidden403)]) {
         [self.delegate onSipForbidden403];
     }

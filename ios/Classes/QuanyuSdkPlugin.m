@@ -216,6 +216,19 @@
             model.freeState = @"busy";
         }
 
+        NSDictionary *persistParams = @{
+            @"loginUrl" : loginUrl ?: @"",
+            @"appKey" : appKey ?: @"",
+            @"secretKey" : secretKey ?: @"",
+            @"gid" : gid ?: @"",
+            @"code" : code ?: @"",
+            @"extPhone" : extPhone ?: @"",
+            @"busy" : @(busy),
+            @"force" : @(force)
+        };
+        [[NSUserDefaults standardUserDefaults] setObject:persistParams forKey:@"QuanYu_last_login_params"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+
         // 先连接WebSocket
         [[QuanYuSocket shared]
                  login:model
@@ -764,9 +777,7 @@
         [[PortSIPManager shared] offLine];
         [[QuanYuSocket shared] setupKeepAlive:NO];
         [[QuanYuSocket shared] logout];
-    }
-
-    if ([[dic allKeys] containsObject:@"opcode"] && [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
+    }else if ([[dic allKeys] containsObject:@"opcode"] && [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
         [self sendEventToFlutter:@{
             @"event" : @"code_kicked",
             @"data" : @{
@@ -1051,10 +1062,34 @@
 }
 
 - (void)onSipForbidden403 {
-    if ([[QuanYuSocket shared] respondsToSelector:@selector(disconnect)]) {
-        [[QuanYuSocket shared] performSelector:@selector(disconnect)];
-    }
-    [[QuanYuSocket shared] reStarConnectServer];
+    [[PortSIPManager shared] hangUp];
+    [[PortSIPManager shared] unRegister];
+    [[PortSIPManager shared] offLine];
+    [[QuanYuSocket shared] setupKeepAlive:NO];
+    [[QuanYuSocket shared] logout];
+    [self sendEventToFlutter:@{@"event" : @"sip_forbidden_403"}];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      NSDictionary *p = [[NSUserDefaults standardUserDefaults] objectForKey:@"QuanYu_last_login_params"];
+      if ([p isKindOfClass:[NSDictionary class]]) {
+          QuanYuLoginModel *model = [[QuanYuLoginModel alloc] init];
+          model.domain = p[@"loginUrl"];
+          model.gid = p[@"gid"];
+          model.code = p[@"code"];
+          model.extPhone = p[@"extPhone"];
+          model.appKey = p[@"appKey"];
+          model.secretKey = p[@"secretKey"];
+
+          [[QuanYuSocket shared] login:model
+                                 force:false
+                            completion:^(BOOL success, NSString *_Nonnull errorMessage) {
+                              if (success) {
+                                  NSLog(@"403后重新登录成功");
+                              } else {
+                                  NSLog(@"403后重新登录失败: %@", errorMessage ?: @"");
+                              }
+                            }];
+      }
+    });
 }
 
 #pragma mark - FlutterStreamHandler 协议实现
