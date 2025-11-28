@@ -267,30 +267,30 @@
  */
 - (void)handleLogout:(FlutterMethodCall *)call result:(FlutterResult)result {
     @try {
-        // 取消网络监听
         [[NSNotificationCenter defaultCenter] removeObserver:self];
-
-        // 取消自动接听
         [[AccountManager sharedAccountManager] setAutoAnswerCall:NO];
-
-        // 执行登出操作
-        [[QuanYuSocket shared] logout];
-        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"QuanYu_force_login"];
-
-        // 挂机
-        [[PortSIPManager shared] hangUp];
-        [[PortSIPManager shared] stopPhoneRefreshTimer];
-
-        // 下线
-        [[PortSIPManager shared] offLine];
-
-        // 关闭保活
-        [[QuanYuSocket shared] setupKeepAlive:NO];
-
-        // 向Flutter发送登出成功事件
-        [self sendEventToFlutter:@{@"event" : @"logout_success", @"data" : @{@"message" : @"登出成功"}}];
-
         result(nil);
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+          @try {
+              [[QuanYuSocket shared] sendRequestWithMessage:@"{\"opcode\": \"C_Logout\"}"];
+              [NSThread sleepForTimeInterval:0.2];
+              [[QuanYuSocket shared] setupKeepAlive:NO];
+              [[QuanYuSocket shared] logout];
+              [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"QuanYu_force_login"];
+              [[PortSIPManager shared] hangUp];
+              [[PortSIPManager shared] stopPhoneRefreshTimer];
+              [[PortSIPManager shared] offLine];
+              dispatch_async(dispatch_get_main_queue(), ^{
+                [self sendEventToFlutter:@{@"event" : @"logout_success", @"data" : @{@"message" : @"登出成功"}}];
+              });
+          } @catch (NSException *exception) {
+              dispatch_async(dispatch_get_main_queue(), ^{
+                if (self.eventSink) {
+                    self.eventSink(@{@"event" : @"logout_failed", @"data" : @{@"error" : exception.reason ?: @""}});
+                }
+              });
+          }
+        });
     } @catch (NSException *exception) {
         result([FlutterError errorWithCode:@"LOGOUT_EXCEPTION"
                                    message:[NSString stringWithFormat:@"登出过程中发生异常: %@", exception.reason]
@@ -777,7 +777,8 @@
         [[PortSIPManager shared] offLine];
         [[QuanYuSocket shared] setupKeepAlive:NO];
         [[QuanYuSocket shared] logout];
-    }else if ([[dic allKeys] containsObject:@"opcode"] && [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
+    } else if ([[dic allKeys] containsObject:@"opcode"] &&
+               [[dic objectForKey:@"opcode"] isEqualToString:@"S_LogoutIPPhone"]) {
         [self sendEventToFlutter:@{
             @"event" : @"code_kicked",
             @"data" : @{

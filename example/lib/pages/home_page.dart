@@ -895,8 +895,8 @@ class _HomePageState extends State<HomePage> {
       if (code != null) {
         setState(() {
           _agentState = code;
-
-          final bool online = sipRegistrationStatus == 2;
+          final bool online =
+              sipRegistrationStatus == 2 || sipRegistrationStatus == 1;
           _isSoftPhoneOnline = online;
           _softPhoneStatus = online ? '在线' : '离线';
 
@@ -1082,21 +1082,15 @@ class _HomePageState extends State<HomePage> {
   /// 在后台执行注销操作
   /// 发送注销指令和SDK注销，不阻塞UI
   void _performLogoutInBackground() {
-    // 使用unawaited确保这个操作在后台执行，不阻塞UI
-    () async {
+    Future.microtask(() async {
+      await Future.delayed(const Duration(milliseconds: 50));
       try {
-        // 发送注销指令
-        const String message = '{"opcode": "C_Logout"}';
-        await _sendCustomMessage(message);
-
-        // 注销SDK连接
         await QuanyuSdk().logout();
-
         debugPrint('后台注销操作完成');
       } catch (e) {
         debugPrint('后台注销操作失败: $e');
       }
-    }();
+    });
   }
 
   /// 构建输入行组件

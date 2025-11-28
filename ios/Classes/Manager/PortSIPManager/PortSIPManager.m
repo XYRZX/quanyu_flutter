@@ -36,6 +36,8 @@
 
 @property(nonatomic, strong) NSTimer *phoneRefreshTimer;
 
+@property(nonatomic, assign) BOOL isUninitializing;
+
 @end
 
 @implementation PortSIPManager
@@ -70,6 +72,7 @@
 
         _mSoundService = [[SoundService alloc] init];
         _sessionVideoFlags = [NSMutableDictionary dictionary];
+        _isUninitializing = NO;
     }
     return self;
 }
@@ -91,6 +94,13 @@
 
 // 上线
 - (void)onLine {
+
+    if (self.isUninitializing) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+          [self onLine];
+        });
+        return;
+    }
 
     if (!_userInfo) {
         NSLog(@"没有用户数据");
@@ -298,17 +308,26 @@
 - (void)offLine {
 
     if (_sipInitialized) {
+        self.isUninitializing = YES;
         [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:@"注销软电话"];
-
-        [NSThread sleepForTimeInterval:1.0];
-
-        [(id)_portSIPSDK unInitialize];
-        _sipInitialized = NO;
+        [self stopPhoneRefreshTimer];
+        if (_autoRegisterTimer) {
+            [_autoRegisterTimer invalidate];
+            _autoRegisterTimer = nil;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [(id)_portSIPSDK enableCallbackSignaling:NO enableReceived:NO];
+          [(id)_portSIPSDK setDelegate:nil];
+        });
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+          [(id)_portSIPSDK unInitialize];
+          _sipInitialized = NO;
+          self.isUninitializing = NO;
+        });
     }
 
     _sipRegistrationStatus = 0;
 
-    // 关闭定时器
     [self stopPhoneRefreshTimer];
     if (_autoRegisterTimer) {
         [_autoRegisterTimer invalidate];
@@ -404,7 +423,10 @@
 // 刷新注册
 - (void)refreshRegister {
 
-    if (_sipRegistrationStatus == 0) { // 0 - 未注册
+    if (self.isUninitializing) {
+        return;
+    }
+    if (_sipRegistrationStatus == 0) {
         [self onLine];
     } else if (_sipRegistrationStatus == 1) { // 1 - 注册中
 
@@ -415,7 +437,7 @@
         if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
             [self.delegate pushAppLogToWeb:@"RefreshRegistration" info:@"Refresh Registration..."];
         }
-    } else if (_sipRegistrationStatus == 3) { // 3 - 注册失败/已注销
+    } else if (_sipRegistrationStatus == 3) {
         [self onLine];
     }
 }
@@ -443,16 +465,8 @@
             [self.delegate pushAppLogToWeb:@"unRegister" info:@"unRegister when background"];
         }
 
-        [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:@"注销软电话"];
-        [_portSIPSDK unInitialize];
-        _sipInitialized = NO;
-
+        [self offLine];
         _sipRegistrationStatus = 3;
-
-        if (_autoRegisterTimer) {
-            [_autoRegisterTimer invalidate];
-            _autoRegisterTimer = nil;
-        }
     }
 }
 
