@@ -282,15 +282,12 @@ class _LoginPageState extends State<LoginPage> {
 
       if (result['success'] == true) {
         await _saveLoginData(credentials);
-        if (_isBusyEnabled) {
-          await QuanyuSdk()
-              .sendRequestWithMessage(message: '{"opcode": "C_SetBusy"}');
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setBool('login_busy', true);
-            await prefs.setInt('agent_state', 2);
-          } catch (_) {}
-        }
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('login_busy', _isBusyEnabled);
+          // 同步重置本地坐席缓存，避免主页根据旧缓存自动置忙
+          await prefs.setInt('agent_state', _isBusyEnabled ? 2 : 1);
+        } catch (_) {}
         _updateLoginState(LoginState.success);
         _showSuccessMessage(result['message'] ?? '登录成功');
         _navigateToHomePage();
