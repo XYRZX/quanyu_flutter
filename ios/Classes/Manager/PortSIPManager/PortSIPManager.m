@@ -399,18 +399,15 @@
         NSLog(@"[QY_RECOVERY_FLOW] TIMER_SKIP_NO_SOCKET: Socket未连接，跳过定时刷新");
         return;
     }
-    [[QuanYuSocket shared] saveLog:@"startPhoneRefreshTimer" message:@"执行中"];
+    [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh" message:@"执行中"];
     BOOL inCall = (_activeSessionId != INVALID_SESSION_ID);
-    NSLog(@"startPhoneRefreshTimer: inCall=%@, activeSessionId=%ld, "
-          @"sipRegistrationStatus=%d",
-          inCall ? @"YES" : @"NO", _activeSessionId, _sipRegistrationStatus);
-
-    [[QuanYuSocket shared] saveLog:@"startPhoneRefreshTimer" message:@"执行中"];
     if (inCall) {
-        [self refreshRegister];
-        [self attemptUpdateCall];
+        int refresh = [_portSIPSDK refreshRegistration:90];
+        [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh-refreshRegistration"
+                               message:[NSString stringWithFormat:@"是否等于0 返回:%d", refresh]];
     } else {
-        [self onLine];
+        [_portSIPSDK registerServer:90 retryTimes:0];
+        [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh-registerServer" message:@"刷新注册"];
     }
 }
 
