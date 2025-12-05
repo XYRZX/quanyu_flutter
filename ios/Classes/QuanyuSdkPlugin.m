@@ -456,20 +456,27 @@
             return;
         }
 
+        BOOL shouldDelay = NO;
         if (message) {
             NSDictionary *dic = [NSString dictionaryWithJsonString:message];
             if ([dic isKindOfClass:[NSDictionary class]]) {
                 NSString *opcode = dic[@"opcode"];
                 if ([opcode isKindOfClass:[NSString class]] &&
-                    ([opcode isEqualToString:@"C_Hangup"] || [opcode isEqualToString:@"C_Hangup"])) {
-                    // 调用挂机方法时，需要把软电话也挂掉。（2_xxx的socket发送C_hangup消息或取消呼叫时
-                    // 也调用sdk的挂机方法）
+                    ([opcode isEqualToString:@"C_Hangup"] || [opcode isEqualToString:@"C_CancelMakeCall"])) {
                     [[PortSIPManager shared] hangUp];
+                    shouldDelay = YES;
                 }
             }
         }
 
-        [[QuanYuSocket shared] sendRequestWithMessage:message];
+        if (shouldDelay) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(),
+                           ^{
+                             [[QuanYuSocket shared] sendRequestWithMessage:message];
+                           });
+        } else {
+            [[QuanYuSocket shared] sendRequestWithMessage:message];
+        }
 
         result(nil);
     } @catch (NSException *exception) {
