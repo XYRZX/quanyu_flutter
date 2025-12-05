@@ -656,9 +656,8 @@
 
     int index = [self findIdleLine];
     if (index < 0) {
-        [[QuanYuSocket shared]
-            saveLog:@"AutoAnswerDecision"
-            message:[NSString stringWithFormat:@"No idle line, reject incoming. sessionId=%ld", sessionId]];
+        [[QuanYuSocket shared] saveLog:@"AutoAnswerDecision"
+                               message:[NSString stringWithFormat:@"没有空闲线路，拒绝来电. sessionId=%ld", sessionId]];
         [(id)_portSIPSDK rejectCall:sessionId code:486];
         return;
     }
