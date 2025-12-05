@@ -360,6 +360,12 @@
     if (_activeSessionId != INVALID_SESSION_ID) {
         [_portSIPSDK hangUp:_activeSessionId];
     }
+    long capturedSessionId = _activeSessionId;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      if (capturedSessionId != INVALID_SESSION_ID) {
+          [self freeLine:capturedSessionId];
+      }
+    });
 }
 
 // 恢复通话
