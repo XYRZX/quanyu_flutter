@@ -437,13 +437,17 @@
         });
         return;
     }
+
+    [[QuanYuSocket shared] saveLog:@"refreshRegister"
+                           message:[NSString stringWithFormat:@"_sipRegistrationStatus=%d", _sipRegistrationStatus]];
+
     if (_sipRegistrationStatus == 0) {
         [self onLine];
     } else if (_sipRegistrationStatus == 1) { // 1 - 注册中
 
     } else if (_sipRegistrationStatus == 2) { // 2 - 已注册
 
-        [_portSIPSDK refreshRegistration:0];
+        [_portSIPSDK refreshRegistration:90]; // 仅刷新，不注销
 
         if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
             [self.delegate pushAppLogToWeb:@"RefreshRegistration" info:@"Refresh Registration..."];
@@ -561,6 +565,10 @@
 
 // 注册失败
 - (void)onRegisterFailure:(char *)statusText statusCode:(int)statusCode sipMessage:(char *)sipMessage {
+
+    [[QuanYuSocket shared] saveLog:@"onRegisterFailure"
+                           message:[NSString stringWithFormat:@"statusText=%s statusCode=%d sipMessage=%s", statusText,
+                                                              statusCode, sipMessage]];
 
     _sipRegistrationStatus = 3;
 
