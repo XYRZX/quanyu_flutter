@@ -38,6 +38,9 @@
 
 @property(nonatomic, assign) BOOL isUninitializing;
 
+@property(nonatomic, strong) NSTimer *signalingWatchdogTimer;
+@property(nonatomic, assign) NSTimeInterval signalingWatchdogInterval;
+
 @end
 
 @implementation PortSIPManager
@@ -274,6 +277,10 @@
     // 尝试注册默认身份
     // 注册刷新间隔为90秒
     ret = (int)[(id)_portSIPSDK registerServer:90 retryTimes:0];
+
+    [[QuanYuSocket shared] saveLog:@"online-registerServer"
+                           message:[NSString stringWithFormat:@"尝试注册默认身份 返回:%d", ret]];
+
     if (ret != 0) {
         [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer"
                                message:[NSString stringWithFormat:@"注销软电话 ErrorCode = %d", ret]];
@@ -306,6 +313,7 @@
         [self.delegate pushAppLogToWeb:@"register" info:@"正在连接软电话"];
     }
     [self startPhoneRefreshTimer];
+    [self startSignalingWatchdog];
 }
 
 // 下线
@@ -315,15 +323,16 @@
         self.isUninitializing = YES;
         [[QuanYuSocket shared] saveLog:@"Service-portSip-unRegisterServer" message:@"注销软电话"];
         [self stopPhoneRefreshTimer];
+        [self stopSignalingWatchdog];
         if (_autoRegisterTimer) {
             [_autoRegisterTimer invalidate];
             _autoRegisterTimer = nil;
         }
         dispatch_async(dispatch_get_main_queue(), ^{
-          [(id)_portSIPSDK enableCallbackSignaling:NO enableReceived:NO];
-          [(id)_portSIPSDK setDelegate:nil];
-          [(id)_portSIPSDK unInitialize];
-          _sipInitialized = NO;
+          [(id)self->_portSIPSDK enableCallbackSignaling:NO enableReceived:NO];
+          [(id)self->_portSIPSDK setDelegate:nil];
+          [(id)self->_portSIPSDK unInitialize];
+          self->_sipInitialized = NO;
           self.isUninitializing = NO;
         });
     }
@@ -331,6 +340,7 @@
     _sipRegistrationStatus = 0;
 
     [self stopPhoneRefreshTimer];
+    [self stopSignalingWatchdog];
     if (_autoRegisterTimer) {
         [_autoRegisterTimer invalidate];
         _autoRegisterTimer = nil;
@@ -400,6 +410,60 @@
     }
 }
 
+- (void)startSignalingWatchdog {
+    if (_signalingWatchdogTimer) {
+        [_signalingWatchdogTimer invalidate];
+        _signalingWatchdogTimer = nil;
+    }
+    if (_sipRegistrationStatus == 0) {
+        return;
+    }
+    if (_signalingWatchdogInterval <= 0) {
+        _signalingWatchdogInterval = 60.0;
+    }
+    _signalingWatchdogTimer = [NSTimer scheduledTimerWithTimeInterval:_signalingWatchdogInterval
+                                                               target:self
+                                                             selector:@selector(onSignalingWatchdogTimer)
+                                                             userInfo:nil
+                                                              repeats:NO];
+}
+
+- (void)resetSignalingWatchdog {
+    if (_signalingWatchdogTimer) {
+        [_signalingWatchdogTimer invalidate];
+        _signalingWatchdogTimer = nil;
+    }
+    [self startSignalingWatchdog];
+}
+
+- (void)stopSignalingWatchdog {
+    if (_signalingWatchdogTimer) {
+        [_signalingWatchdogTimer invalidate];
+        _signalingWatchdogTimer = nil;
+    }
+}
+
+- (void)onSignalingWatchdogTimer {
+    BOOL inCall = (_activeSessionId != INVALID_SESSION_ID);
+    BOOL available = (_sipInitialized && _sipRegistrationStatus != 0 && !self.isUninitializing);
+    if (!available) {
+        [[QuanYuSocket shared] saveLog:@"SignalingWatchdog" message:@"skip: unavailable or uninitializing"];
+        return;
+    }
+    if (inCall) {
+        [[QuanYuSocket shared] saveLog:@"SignalingWatchdog" message:@"skip: active call"];
+        [self startSignalingWatchdog];
+        return;
+    }
+    [[QuanYuSocket shared] saveLog:@"SignalingWatchdog" message:@"no signaling within 60s, re-register"];
+    [self unRegister];
+    [self onLine];
+    int attempts = [[QuanYuSocket shared] reconnectAttempts];
+    [[QuanYuSocket shared] saveLog:@"SignalingWatchdog"
+                           message:[NSString stringWithFormat:@"reconnectAttempts=%d", attempts]];
+    [self startSignalingWatchdog];
+}
+
 - (void)onPhoneRefreshTimer {
     if (!self.socketConnected) {
         NSLog(@"[QY_RECOVERY_FLOW] TIMER_SKIP_NO_SOCKET: Socket未连接，跳过定时刷新");
@@ -410,10 +474,11 @@
     if (inCall) {
         int refresh = [_portSIPSDK refreshRegistration:90];
         [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh-refreshRegistration"
-                               message:[NSString stringWithFormat:@"刷新注册 是否等于0 返回:%d", refresh]];
+                               message:[NSString stringWithFormat:@"刷新注册 返回:%d", refresh]];
     } else {
         int refresh = [_portSIPSDK registerServer:90 retryTimes:0];
-        [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh-registerServer" message:[NSString stringWithFormat:@"重新注册 是否等于0 返回:%d", refresh]];
+        [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh-registerServer"
+                               message:[NSString stringWithFormat:@"重新注册 返回:%d", refresh]];
     }
 }
 
@@ -447,7 +512,10 @@
 
     } else if (_sipRegistrationStatus == 2) { // 2 - 已注册
 
-        [_portSIPSDK refreshRegistration:90]; // 仅刷新，不注销
+        int refresh = [_portSIPSDK refreshRegistration:90]; // 仅刷新，不注销
+
+        [[QuanYuSocket shared] saveLog:@"refreshRegister"
+                               message:[NSString stringWithFormat:@"刷新注册 是否等于0 返回:%d", refresh]];
 
         if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
             [self.delegate pushAppLogToWeb:@"RefreshRegistration" info:@"Refresh Registration..."];
@@ -493,6 +561,10 @@
     if (_autoRegisterTimer) {
         [_autoRegisterTimer invalidate];
         _autoRegisterTimer = nil;
+    }
+    if (_signalingWatchdogTimer) {
+        [_signalingWatchdogTimer invalidate];
+        _signalingWatchdogTimer = nil;
     }
     self.delegate = nil;
 }
@@ -1022,6 +1094,7 @@
     [[QuanYuSocket shared]
         saveLog:@"onReceivedSignaling"
         message:[NSString stringWithFormat:@"sessionId=%ld, message=%s", sessionId, message ? message : "null"]];
+    [self resetSignalingWatchdog];
 }
 
 - (void)onRecvDtmfTone:(long)sessionId tone:(int)tone {
