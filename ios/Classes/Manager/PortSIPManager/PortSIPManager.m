@@ -116,10 +116,6 @@
         [self offLine];
     }
 
-    [(id)_portSIPSDK setDelegate:self];
-
-    [[QuanYuSocket shared] saveLog:@"RegisterServer" message:@"注册软电话"];
-
     NSString *authName = [_userInfo objectForKey:@"name"];
     NSString *userName = [_userInfo objectForKey:@"extphone"];
     NSString *password = [_userInfo objectForKey:@"extphonePassword"];
@@ -178,6 +174,10 @@
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSString *documentsDirectory = [paths objectAtIndex:0];
 
+    [(id)_portSIPSDK setDelegate:nil];
+    [(id)_portSIPSDK setDelegate:self];
+    [[QuanYuSocket shared] saveLog:@"RegisterServer" message:@"开始-注册软电话"];
+
     int ret = (int)[(id)_portSIPSDK initialize:transport
                                        localIP:loaclIPaddress
                                   localSIPPort:localSIPPort
@@ -201,8 +201,13 @@
                                                                                 ret]];
         }
 
+        [[QuanYuSocket shared] saveLog:@"RegisterServer"
+                               message:[NSString stringWithFormat:@"软电话-注册失败-%d", ret]];
+
         return;
     }
+
+    [[QuanYuSocket shared] saveLog:@"RegisterServer" message:[NSString stringWithFormat:@"软电话-注册成功"]];
 
     // 开启SIP信令回调（默认关闭）
     [(id)_portSIPSDK enableCallbackSignaling:YES enableReceived:YES];
@@ -312,7 +317,7 @@
     if ([self.delegate respondsToSelector:@selector(pushAppLogToWeb:info:)]) {
         [self.delegate pushAppLogToWeb:@"register" info:@"正在连接软电话"];
     }
-    [self startPhoneRefreshTimer];
+
     //    [self startSignalingWatchdog];
 }
 
@@ -328,13 +333,14 @@
             [_autoRegisterTimer invalidate];
             _autoRegisterTimer = nil;
         }
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [(id)self->_portSIPSDK enableCallbackSignaling:NO enableReceived:NO];
-          [(id)self->_portSIPSDK setDelegate:nil];
-          [(id)self->_portSIPSDK unInitialize];
-          self->_sipInitialized = NO;
-          self.isUninitializing = NO;
-        });
+
+        //        dispatch_async(dispatch_get_main_queue(), ^{
+        [(id)_portSIPSDK enableCallbackSignaling:NO enableReceived:NO];
+        [(id)_portSIPSDK setDelegate:nil];
+        [(id)_portSIPSDK unInitialize];
+        _sipInitialized = NO;
+        self.isUninitializing = NO;
+        //        });
     }
 
     _sipRegistrationStatus = 0;
@@ -634,6 +640,8 @@
     if ([self.delegate respondsToSelector:@selector(registerSoftPhoneCallback:errorMsg:)]) {
         [self.delegate registerSoftPhoneCallback:0 errorMsg:@"注册软电话成功"];
     }
+
+    [self startPhoneRefreshTimer];
 }
 
 // 注册失败

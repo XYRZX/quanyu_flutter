@@ -77,8 +77,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL unregisterWhenCallEnds;
 
 @property(nonatomic, assign)
-    int sipRegistrationStatus; // 0 - 未注册 1 - 注册中 2 - 已注册 3 -
-                               // 注册失败/已注销
+    int sipRegistrationStatus; // 0 - 未注册 1 - 注册中 2 - 已注册 3 - 注册失败/已注销
 
 @property(nonatomic, strong) NSDictionary *userInfo; // 登录用户的信息
 
