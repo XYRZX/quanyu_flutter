@@ -69,7 +69,6 @@ import quanyu_sdk
         if enableForceBackground {
             PortSIPManager.shared().startKeepAwake()
         } else {
-//            PortSIPManager.shared().unRegister()
             beginBackgroundTaskForRegister()
         }
     }
@@ -79,17 +78,6 @@ import quanyu_sdk
 
         if enableForceBackground {
             PortSIPManager.shared().stopKeepAwake()
-
-//            var dic: [String: String] = [:]
-//            dic["netSatus"] = "有网"
-//
-//            NotificationCenter.default.post(
-//                name: Notification.Name("internetChange"),
-//                object: nil,
-//                userInfo: dic
-//            )
-        } else {
-//            PortSIPManager.shared().refreshRegister()
         }
     }
 

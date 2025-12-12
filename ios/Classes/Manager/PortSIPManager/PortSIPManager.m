@@ -410,10 +410,10 @@
     if (inCall) {
         int refresh = [_portSIPSDK refreshRegistration:90];
         [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh-refreshRegistration"
-                               message:[NSString stringWithFormat:@"是否等于0 返回:%d", refresh]];
+                               message:[NSString stringWithFormat:@"刷新注册 是否等于0 返回:%d", refresh]];
     } else {
-        [_portSIPSDK registerServer:90 retryTimes:0];
-        [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh-registerServer" message:@"刷新注册"];
+        int refresh = [_portSIPSDK registerServer:90 retryTimes:0];
+        [[QuanYuSocket shared] saveLog:@"refreshPhoneRefresh-registerServer" message:[NSString stringWithFormat:@"重新注册 是否等于0 返回:%d", refresh]];
     }
 }
 
